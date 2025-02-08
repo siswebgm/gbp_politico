@@ -1,0 +1,80 @@
+{
+  "_browser.DaNGQ67p.js": {
+    "file": "assets/browser.DaNGQ67p.js",
+    "name": "browser",
+    "isDynamicEntry": true,
+    "imports": [
+      "_vendor.5cfLbDmN.js"
+    ]
+  },
+  "_ui.CD54FXok.js": {
+    "file": "assets/ui.CD54FXok.js",
+    "name": "ui",
+    "imports": [
+      "_vendor.5cfLbDmN.js"
+    ]
+  },
+  "_vendor.5cfLbDmN.js": {
+    "file": "assets/vendor.5cfLbDmN.js",
+    "name": "vendor",
+    "dynamicImports": [
+      "_browser.DaNGQ67p.js"
+    ]
+  },
+  "index.html": {
+    "file": "assets/index.D1UFA9Ir.js",
+    "name": "index",
+    "src": "index.html",
+    "isEntry": true,
+    "imports": [
+      "_ui.CD54FXok.js",
+      "_vendor.5cfLbDmN.js"
+    ],
+    "dynamicImports": [
+      "src/components/ElectoralMap.tsx"
+    ],
+    "css": [
+      "assets/index.Dmgt5L3Y.css"
+    ]
+  },
+  "node_modules/leaflet/dist/images/layers-2x.png": {
+    "file": "assets/layers-2x.Bpkbi35X.png",
+    "src": "node_modules/leaflet/dist/images/layers-2x.png"
+  },
+  "node_modules/leaflet/dist/images/layers.png": {
+    "file": "assets/layers.BWBAp2CZ.png",
+    "src": "node_modules/leaflet/dist/images/layers.png"
+  },
+  "node_modules/leaflet/dist/images/marker-icon-2x.png": {
+    "file": "assets/marker-icon-2x._ZA0WGCc.png",
+    "src": "node_modules/leaflet/dist/images/marker-icon-2x.png"
+  },
+  "node_modules/leaflet/dist/images/marker-icon.png": {
+    "file": "assets/marker-icon.hN30_KVU.png",
+    "src": "node_modules/leaflet/dist/images/marker-icon.png"
+  },
+  "node_modules/leaflet/dist/images/marker-shadow.png": {
+    "file": "assets/marker-shadow.f7SaPCxT.png",
+    "src": "node_modules/leaflet/dist/images/marker-shadow.png"
+  },
+  "src/components/ElectoralMap.tsx": {
+    "file": "assets/ElectoralMap.DyVRwBY8.js",
+    "name": "ElectoralMap",
+    "src": "src/components/ElectoralMap.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_ui.CD54FXok.js",
+      "_vendor.5cfLbDmN.js"
+    ],
+    "css": [
+      "assets/ElectoralMap.tXC8FhYF.css"
+    ],
+    "assets": [
+      "assets/marker-icon.hN30_KVU.png",
+      "assets/marker-icon-2x._ZA0WGCc.png",
+      "assets/marker-shadow.f7SaPCxT.png",
+      "assets/layers.BWBAp2CZ.png",
+      "assets/layers-2x.Bpkbi35X.png"
+    ]
+  }
+}
