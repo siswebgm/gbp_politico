@@ -31,10 +31,11 @@ import {
 
 interface ActiveFiltersProps {
   filters: EleitorFilters;
-  onFilterChange: (newFilters: any) => void;
+  onFilterChange: (key: keyof EleitorFilters) => void;
+  onClearAll: () => void;
 }
 
-const ActiveFilters: React.FC<ActiveFiltersProps> = ({ filters, onFilterChange }) => {
+const ActiveFilters: React.FC<ActiveFiltersProps> = ({ filters, onFilterChange, onClearAll }) => {
   const labels: { [key: string]: string } = {
     genero: 'Gênero',
     zona: 'Zona',
@@ -98,7 +99,7 @@ const ActiveFilters: React.FC<ActiveFiltersProps> = ({ filters, onFilterChange }
               </span>
               <span>{displayValue}</span>
               <button
-                onClick={() => onFilterChange({ [key]: '' })}
+                onClick={() => onFilterChange(key)}
                 className="ml-1 p-0.5 hover:bg-primary-200 dark:hover:bg-primary-800 rounded-full transition-colors group-hover:bg-primary-200/50 dark:group-hover:bg-primary-800/50"
                 title="Remover filtro"
               >
@@ -109,21 +110,7 @@ const ActiveFilters: React.FC<ActiveFiltersProps> = ({ filters, onFilterChange }
         })}
 
         <button
-          onClick={() => {
-            onFilterChange({
-              nome: '',
-              genero: '',
-              zona: '',
-              secao: '',
-              bairro: '',
-              categoria_id: undefined,
-              logradouro: '',
-              indicado: '',
-              cep: '',
-              responsavel: '',
-              cidade: ''
-            });
-          }}
+          onClick={onClearAll}
           className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors hover:underline"
         >
           Limpar todos
@@ -166,7 +153,7 @@ export function Eleitores() {
     zona: '',
     secao: '',
     bairro: '',
-    categoria_id: undefined,
+    categoria_uid: undefined,
     logradouro: '',
     indicado: '',
     cep: '',
@@ -227,8 +214,37 @@ export function Eleitores() {
   }, []);
 
   const handleFilterChange = useCallback((newFilters: Partial<EleitorFilters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
-    setCurrentPage(1); // Volta para a primeira página ao filtrar
+    setFilters(prev => ({
+      ...prev,
+      ...newFilters
+    }));
+    setCurrentPage(1); // Reseta para a primeira página ao filtrar
+  }, []);
+
+  const handleClearAllFilters = useCallback(() => {
+    const emptyFilters: EleitorFilters = {
+      nome: '',
+      genero: '',
+      zona: '',
+      secao: '',
+      bairro: '',
+      categoria_uid: undefined,
+      logradouro: '',
+      indicado: '',
+      cep: '',
+      responsavel: '',
+      cidade: ''
+    };
+    setFilters(emptyFilters);
+    setCurrentPage(1);
+  }, []);
+
+  const handleClearFilter = useCallback((key: keyof EleitorFilters) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: key === 'categoria_uid' ? undefined : ''
+    }));
+    setCurrentPage(1);
   }, []);
 
   const handleSelectAllPages = useCallback(() => {
@@ -328,74 +344,80 @@ export function Eleitores() {
           <div className="py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
               {/* Filtros e Ações */}
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                {/* Título e Descrição */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center">
-                    <Users className="h-8 w-8 text-primary-600 mr-3" />
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white sm:truncate">
-                          Eleitores
-                        </h1>
-                        <span className="px-2.5 py-0.5 rounded-full text-sm font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/20 dark:text-primary-300">
-                          {total}
-                        </span>
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  {/* Título e Descrição */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center">
+                      <Users className="h-8 w-8 text-primary-600 mr-3" />
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <h1 className="text-2xl font-bold text-gray-900 dark:text-white sm:truncate">
+                            Eleitores
+                          </h1>
+                          <span className="px-2.5 py-0.5 rounded-full text-sm font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/20 dark:text-primary-300">
+                            {total}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 max-w-2xl">
+                          Gerencie sua base de eleitores de forma eficiente. Adicione, edite e organize todos os seus contatos.
+                        </p>
                       </div>
-                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 max-w-2xl">
-                        Gerencie sua base de eleitores de forma eficiente. Adicione, edite e organize todos os seus contatos.
-                      </p>
                     </div>
                   </div>
-                </div>
 
-                {/* Grupo de Botões */}
-                <div className="hidden md:flex items-center gap-3">
-                  {/* Botão Filtros */}
-                  <button
-                    onClick={() => setShowFilters(true)}
-                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600"
-                  >
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filtros
-                    {Object.values(filters).some(value => value) && (
-                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
-                        Ativos
-                      </span>
-                    )}
-                  </button>
+                  {/* Grupo de Botões */}
+                  <div className="hidden md:flex items-center gap-3">
+                    {/* Botão Filtros */}
+                    <button
+                      onClick={() => setShowFilters(true)}
+                      className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600"
+                    >
+                      <Filter className="h-4 w-4 mr-2" />
+                      Filtros
+                      {Object.values(filters).some(value => value) && (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+                          Ativos
+                        </span>
+                      )}
+                    </button>
 
-                  {/* Botão Exportar */}
-                  <button
-                    onClick={() => setIsExportarModalOpen(true)}
-                    disabled={!canExport || selectedEleitores.length === 0}
-                    className="inline-flex items-center gap-x-1.5 rounded-md bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={!canExport ? "Apenas administradores com nível de acesso diferente de 'comum' podem exportar" : selectedEleitores.length === 0 ? "Selecione pelo menos um eleitor para exportar" : ""}
-                  >
-                    <FileSpreadsheet className="-ml-0.5 h-5 w-5" aria-hidden="true" />
-                    {canExport ? 'Exportar' : 'Bloqueado'}
-                    {selectedEleitores.length > 0 && (
-                      <span className="ml-1.5 rounded-full bg-primary-700 px-2 py-0.5 text-xs">
-                        {selectedEleitores.length}
-                      </span>
-                    )}
-                  </button>
+                    {/* Botão Exportar */}
+                    <button
+                      onClick={() => setIsExportarModalOpen(true)}
+                      disabled={!canExport || selectedEleitores.length === 0}
+                      className="inline-flex items-center gap-x-1.5 rounded-md bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={!canExport ? "Apenas administradores com nível de acesso diferente de 'comum' podem exportar" : selectedEleitores.length === 0 ? "Selecione pelo menos um eleitor para exportar" : ""}
+                    >
+                      <FileSpreadsheet className="-ml-0.5 h-5 w-5" aria-hidden="true" />
+                      {canExport ? 'Exportar' : 'Bloqueado'}
+                      {selectedEleitores.length > 0 && (
+                        <span className="ml-1.5 rounded-full bg-primary-700 px-2 py-0.5 text-xs">
+                          {selectedEleitores.length}
+                        </span>
+                      )}
+                    </button>
 
-                  {/* Botão Novo Eleitor */}
-                  <button
-                    onClick={() => navigate('/app/eleitores/novo')}
-                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-transparent text-sm font-medium text-white bg-primary-600 shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Eleitor
-                  </button>
+                    {/* Botão Novo Eleitor */}
+                    <button
+                      onClick={() => navigate('/app/eleitores/novo')}
+                      className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-transparent text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 shadow-sm transition-colors duration-200 dark:hover:bg-primary-500"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Novo Eleitor
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {/* Filtros Ativos */}
               {Object.values(filters).some(value => value) && (
                 <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-                  <ActiveFilters filters={filters} onFilterChange={handleFilterChange} />
+                  <ActiveFilters 
+                    filters={filters} 
+                    onFilterChange={handleClearFilter}
+                    onClearAll={handleClearAllFilters}
+                  />
                 </div>
               )}
             </div>
