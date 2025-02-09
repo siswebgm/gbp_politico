@@ -2,6 +2,16 @@ import { Button } from "@/components/ui/button";
 import { Building2, FileText, Mail, MessageCircle, Phone, PieChart, Users, LogIn, MapPin, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { WhatsappLogo } from 'phosphor-react';
 
 export function LandingPage() {
   const features = [
@@ -112,6 +122,61 @@ export function LandingPage() {
     return () => clearInterval(interval);
   }, [states]);
 
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [whatsAppNumber, setWhatsAppNumber] = useState("");
+
+  const formatWhatsApp = (value: string) => {
+    // Remove tudo que não for número
+    const numbers = value.replace(/\D/g, '');
+    
+    // Aplica a máscara
+    let formatted = numbers;
+    if (numbers.length <= 2) {
+      formatted = `(${numbers}`;
+    } else if (numbers.length <= 7) {
+      formatted = `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+    } else {
+      formatted = `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+    }
+    
+    return formatted;
+  };
+
+  const handleWhatsAppChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatWhatsApp(e.target.value);
+    setWhatsAppNumber(formatted);
+  };
+
+  const handleWhatsAppSubmit = async () => {
+    // Remove todos os caracteres não numéricos para enviar
+    const cleanNumber = whatsAppNumber.replace(/\D/g, '');
+    
+    try {
+      // Envia o número para o webhook
+      await fetch('https://whkn8n.guardia.work/webhook/gbp_cliente-site', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          whatsapp: cleanNumber
+        })
+      });
+
+      // Redireciona para o WhatsApp
+      window.location.href = `https://wa.me/55${cleanNumber}?text=Olá! Gostaria de agendar uma demonstração do GBP Político.`;
+      setIsWhatsAppModalOpen(false);
+      setWhatsAppNumber("");
+    } catch (error) {
+      console.error('Erro ao enviar número:', error);
+      // Você pode adicionar um toast ou notificação de erro aqui se desejar
+    }
+  };
+
+  const handleDemoRequest = () => {
+    setIsWhatsAppModalOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Header - Mais compacto em mobile */}
@@ -164,6 +229,7 @@ export function LandingPage() {
                     <div className="rounded-md shadow">
                       <a
                         href="#"
+                        onClick={handleDemoRequest}
                         className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg md:px-10"
                       >
                         Agende uma Demonstração
@@ -177,7 +243,7 @@ export function LandingPage() {
                   {/* Modern MacBook Pro Mockup */}
                   <div className="relative z-20 transform perspective-1200 rotateX-3 hover:-rotate-x-1 transition-all duration-700">
                     {/* Screen Part */}
-                    <div className="bg-gradient-to-br from-[#363638] via-[#2a2a2c] to-[#1d1d1f] rounded-2xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.5)] overflow-hidden ring-1 ring-white/10">
+                    <div className="bg-gradient-to-br from-[#363638] via-[#2a2a2c] to-[#1d1d1f] rounded-2xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/10">
                       {/* Screen Frame */}
                       <div className="p-[0.15rem] bg-gradient-to-b from-[#2a2a2c] to-[#1d1d1f]">
                         {/* Inner Frame */}
@@ -549,6 +615,47 @@ export function LandingPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.1),transparent_50%)]"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(37,99,235,0.1),transparent_50%)]"></div>
       </div>
+
+      <Dialog open={isWhatsAppModalOpen} onOpenChange={setIsWhatsAppModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white rounded-xl shadow-xl">
+          <DialogHeader className="space-y-3">
+            <DialogTitle className="text-2xl font-bold text-center text-gray-900">
+              Agende uma Demonstração
+            </DialogTitle>
+            <DialogDescription className="text-center text-gray-600">
+              Digite seu número de WhatsApp para entrarmos em contato e apresentar todas as funcionalidades do sistema.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="p-6">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <WhatsappLogo className="h-5 w-5 text-green-500" weight="fill" />
+              </div>
+              <Input
+                id="whatsapp"
+                type="tel"
+                placeholder="(11) 99999-9999"
+                className="pl-10 w-full h-12 text-lg border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={whatsAppNumber}
+                onChange={handleWhatsAppChange}
+                maxLength={15}
+              />
+            </div>
+            
+            <div className="mt-6">
+              <Button 
+                onClick={handleWhatsAppSubmit}
+                className="w-full h-12 text-lg font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+                disabled={whatsAppNumber.replace(/\D/g, '').length < 11}
+              >
+                <WhatsappLogo className="h-5 w-5" weight="fill" />
+                Solicitar Demonstração
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
