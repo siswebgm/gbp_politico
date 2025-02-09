@@ -154,27 +154,43 @@ export function LandingPage() {
   const handleWhatsAppSubmit = async () => {
     // Remove todos os caracteres não numéricos para enviar
     const cleanNumber = whatsAppNumber.replace(/\D/g, '');
+    const data = {
+      whatsapp: cleanNumber,
+      name: name
+    };
+    
+    console.log('Enviando dados:', data);
     
     try {
       setIsSubmitting(true);
       // Envia o número para o webhook de teste
-      await fetch('https://edtn8n.guardia.work/webhook-test/gbp_cliente-site', {
+      const response = await fetch('https://edtn8n.guardia.work/webhook-test/gbp_cliente-site', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
-        body: JSON.stringify({
-          whatsapp: cleanNumber,
-          name: name
-        })
+        mode: 'cors',
+        body: JSON.stringify(data)
       });
+
+      console.log('Status da resposta:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Erro na resposta:', errorText);
+        throw new Error(`Erro no servidor: ${response.status} - ${errorText}`);
+      }
+
+      const responseData = await response.json();
+      console.log('Resposta do servidor:', responseData);
 
       toast.success('Recebemos sua solicitação! Em breve nossa equipe entrará em contato.');
       setIsWhatsAppModalOpen(false);
       setWhatsAppNumber("");
       setName("");
     } catch (error) {
-      console.error('Erro ao enviar dados:', error);
+      console.error('Erro completo:', error);
       toast.error('Ops! Algo deu errado. Por favor, tente novamente.');
     } finally {
       setIsSubmitting(false);
