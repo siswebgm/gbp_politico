@@ -163,8 +163,8 @@ export function LandingPage() {
     
     try {
       setIsSubmitting(true);
-      // Envia o número para o webhook de teste
-      const response = await fetch('https://edtn8n.guardia.work/webhook-test/gbp_cliente-site', {
+      // Envia o número para o webhook de produção
+      const response = await fetch('https://whkn8n.guardia.work/webhook/gbp_cliente-site', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
