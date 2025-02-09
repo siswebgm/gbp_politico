@@ -44,6 +44,8 @@ export function Login() {
       try {
         await signIn(data.email, data.password);
         navigate('/app', { replace: true });
+        // Força um refresh da página após o redirecionamento
+        window.location.reload();
       } catch (error) {
         if (error instanceof Error) {
           if (error.message.includes('bloqueada')) {
