@@ -66,6 +66,11 @@ export function Login() {
     }
   };
 
+  const handleCompanyCreated = (createdEmail: string) => {
+    setEmail(createdEmail);
+    setIsModalOpen(false);
+  };
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row relative overflow-hidden">
       {/* Divisor curvo para desktop */}
@@ -252,9 +257,7 @@ export function Login() {
       <CreateCompanyModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSuccess={() => {
-          setIsModalOpen(false);
-        }}
+        onSuccess={handleCompanyCreated}
       />
       <ErrorModal isOpen={isErrorModalOpen} onClose={() => setIsErrorModalOpen(false)} />
       <TestExpiredModal isOpen={isTestExpiredModalOpen} onClose={() => setIsTestExpiredModalOpen(false)} />

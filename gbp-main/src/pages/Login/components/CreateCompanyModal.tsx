@@ -44,7 +44,7 @@ type CreateCompanyFormData = z.infer<typeof createCompanySchema>;
 interface CreateCompanyModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (email: string) => void;
 }
 
 interface ViaCepResponse {
@@ -190,7 +190,7 @@ export function CreateCompanyModal({ isOpen, onClose, onSuccess }: CreateCompany
       ]);
 
       toast.success('Empresa criada com sucesso!');
-      onSuccess();
+      onSuccess(data.email);
       onClose();
     } catch (error) {
       console.error('Erro ao criar empresa:', error);
