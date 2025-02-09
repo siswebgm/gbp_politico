@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { WhatsappLogo } from 'phosphor-react';
 import { User } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast, Toaster } from 'react-hot-toast';
 
 export function LandingPage() {
   const features = [
@@ -187,6 +187,7 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Toaster position="top-right" />
       {/* Header - Mais compacto em mobile */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-blue-600 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
