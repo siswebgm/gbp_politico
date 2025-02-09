@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { WhatsappLogo } from 'phosphor-react';
 import { User } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 export function LandingPage() {
   const features = [
@@ -126,6 +127,7 @@ export function LandingPage() {
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [whatsAppNumber, setWhatsAppNumber] = useState("");
   const [name, setName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formatWhatsApp = (value: string) => {
     // Remove tudo que não for número
@@ -154,8 +156,9 @@ export function LandingPage() {
     const cleanNumber = whatsAppNumber.replace(/\D/g, '');
     
     try {
-      // Envia o número para o webhook
-      await fetch('https://whkn8n.guardia.work/webhook/gbp_cliente-site', {
+      setIsSubmitting(true);
+      // Envia o número para o webhook de teste
+      await fetch('https://edtn8n.guardia.work/webhook-test/gbp_cliente-site', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -166,13 +169,15 @@ export function LandingPage() {
         })
       });
 
-      // Redireciona para o WhatsApp
-      window.location.href = `https://wa.me/55${cleanNumber}?text=Olá! Gostaria de agendar uma demonstração do GBP Político.`;
+      toast.success('Recebemos sua solicitação! Em breve nossa equipe entrará em contato.');
       setIsWhatsAppModalOpen(false);
       setWhatsAppNumber("");
       setName("");
     } catch (error) {
-      console.error('Erro ao enviar número:', error);
+      console.error('Erro ao enviar dados:', error);
+      toast.error('Ops! Algo deu errado. Por favor, tente novamente.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -664,10 +669,14 @@ export function LandingPage() {
               <Button 
                 onClick={handleWhatsAppSubmit}
                 className="w-full h-12 text-lg font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
-                disabled={whatsAppNumber.replace(/\D/g, '').length < 11 || !name.trim()}
+                disabled={whatsAppNumber.replace(/\D/g, '').length < 11 || !name.trim() || isSubmitting}
               >
-                <WhatsappLogo className="h-5 w-5" weight="fill" />
-                Solicitar Demonstração
+                {isSubmitting ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <WhatsappLogo className="h-5 w-5" weight="fill" />
+                )}
+                {isSubmitting ? 'Enviando...' : 'Solicitar Demonstração'}
               </Button>
             </div>
           </div>
