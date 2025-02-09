@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import axios from 'axios';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -15,3 +15,9 @@ export const getAuthHeaders = () => {
   const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+});
+
+export default api;

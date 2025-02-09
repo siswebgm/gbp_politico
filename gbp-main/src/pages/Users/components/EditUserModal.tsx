@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog';
 import { userService } from '../../../services/users';
-import { toast } from 'react-hot-toast';
-import { UserCircle2, Mail, Phone, ShieldCheck, Activity, Briefcase } from 'lucide-react';
+import { toast } from '../../../components/ui/use-toast';
+import { UserCircle2, Mail, Phone, ShieldCheck, Activity } from 'lucide-react';
 
 interface EditUserModalProps {
   isOpen: boolean;
@@ -16,7 +15,6 @@ interface EditUserModalProps {
     email: string | null;
     contato: string | null;
     nivel_acesso: string | null;
-    cargo: string | null;
     status: string | null;
   };
 }
@@ -28,7 +26,6 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
     email: '',
     contato: '',
     nivel_acesso: '',
-    cargo: '',
     status: ''
   });
 
@@ -39,7 +36,6 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
         email: user.email || '',
         contato: user.contato || '',
         nivel_acesso: user.nivel_acesso || '',
-        cargo: user.cargo || '',
         status: user.status || ''
       });
     }
@@ -58,35 +54,41 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
 
     try {
       if (!formData.status) {
-        toast.error('O campo Status é obrigatório');
+        toast({
+          variant: "destructive",
+          title: "Campo obrigatório",
+          description: "O campo Status é obrigatório"
+        });
         return;
       }
 
       if (!formData.nivel_acesso) {
-        toast.error('O campo Nível de Acesso é obrigatório');
+        toast({
+          variant: "destructive",
+          title: "Campo obrigatório",
+          description: "O campo Nível de Acesso é obrigatório"
+        });
         return;
       }
 
-      if (!formData.cargo) {
-        toast.error('O campo Cargo é obrigatório');
-        return;
-      }
-
-      await userService.update(user.uid, {
+      const updatedData = {
         nome: formData.nome,
         email: formData.email,
         contato: formData.contato,
         nivel_acesso: formData.nivel_acesso,
-        cargo: formData.cargo,
         status: formData.status
-      });
+      };
 
-      toast.success('Usuário atualizado com sucesso!');
+      await userService.update(user.uid, updatedData);
       onSuccess();
       onClose();
     } catch (error) {
       console.error('Erro ao atualizar usuário:', error);
-      toast.error('Erro ao atualizar usuário');
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Erro ao atualizar usuário"
+      });
     } finally {
       setLoading(false);
     }
@@ -105,6 +107,17 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
     }
   };
 
+  const getNivelAcessoColor = (nivel: string) => {
+    switch (nivel) {
+      case 'admin':
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'comum':
+        return 'bg-green-50 text-green-700 border-green-200';
+      default:
+        return 'bg-gray-50 text-gray-700 border-gray-200';
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
@@ -117,84 +130,64 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-5">
           <div className="space-y-2">
-            <label htmlFor="nome" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="nome" className="block text-sm font-medium text-gray-700">
               Nome
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <UserCircle2 className="h-5 w-5 text-gray-400" />
               </div>
-              <Input
+              <input
+                type="text"
                 id="nome"
                 value={formData.nome}
                 onChange={handleChange('nome')}
-                className="pl-10"
+                className="w-full h-10 pl-10 pr-3 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
                 placeholder="Nome completo"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
               Email
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Mail className="h-5 w-5 text-gray-400" />
               </div>
-              <Input
-                id="email"
+              <input
                 type="email"
+                id="email"
                 value={formData.email}
                 onChange={handleChange('email')}
-                className="pl-10"
+                className="w-full h-10 pl-10 pr-3 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
                 placeholder="Email"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="contato" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="contato" className="block text-sm font-medium text-gray-700">
               Contato
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Phone className="h-5 w-5 text-gray-400" />
               </div>
-              <Input
+              <input
+                type="text"
                 id="contato"
                 value={formData.contato}
                 onChange={handleChange('contato')}
-                className="pl-10"
+                className="w-full h-10 pl-10 pr-3 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
                 placeholder="Telefone/Whatsapp"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="cargo" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              <div className="flex items-center gap-2">
-                <Briefcase className="h-5 w-5 text-gray-400" />
-                Cargo
-                <span className="text-red-500">*</span>
-              </div>
-            </label>
-            <select
-              id="cargo"
-              value={formData.cargo}
-              onChange={handleChange('cargo')}
-              required
-              className="w-full h-10 pl-3 pr-10 py-2 text-base border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md dark:bg-gray-700 dark:text-white"
-            >
-              <option value="">Selecione um cargo</option>
-              <option value="admin">Administrador</option>
-              <option value="editor">Editor</option>
-              <option value="viewer">Visualizador</option>
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="nivel_acesso" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="nivel_acesso" className="block text-sm font-medium text-gray-700">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-5 w-5 text-gray-400" />
                 Nível de Acesso
@@ -206,16 +199,16 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
               value={formData.nivel_acesso}
               onChange={handleChange('nivel_acesso')}
               required
-              className="w-full h-10 pl-3 pr-10 py-2 text-base border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md dark:bg-gray-700 dark:text-white"
+              className={`w-full h-10 pl-3 pr-10 py-2 text-base border focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md ${getNivelAcessoColor(formData.nivel_acesso)}`}
             >
               <option value="">Selecione um nível</option>
-              <option value="admin">Administrador</option>
-              <option value="user">Usuário</option>
+              <option value="admin" className="bg-blue-50 text-blue-700">Administrador</option>
+              <option value="comum" className="bg-green-50 text-green-700">Comum</option>
             </select>
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="status" className="block text-sm font-medium text-gray-700">
               <div className="flex items-center gap-2">
                 <Activity className="h-5 w-5 text-gray-400" />
                 Status

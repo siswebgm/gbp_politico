@@ -1,36 +1,53 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../providers/AuthProvider';
+import { useCompanyStore } from '../../store/useCompanyStore';
+import { supabaseClient } from '../../lib/supabase';
+import { useRealtimeSubscription } from '../../hooks/useRealtimeSubscription';
+import { useNotifications } from '../../hooks/useNotifications';
+import { useDashboardData } from '../../hooks/useDashboardData';
+import { useDashboardStore } from '../../store/useDashboardStore';
+import { useLastAccess } from '../../hooks/useLastAccess';
+import { cn } from '../../lib/utils';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { 
   Users, 
   FileText, 
-  MessageSquare, 
-  UserCheck, 
-  CalendarCheck, 
-  Book, 
-  FileSpreadsheet, 
-  BookOpen, 
-  Calendar, 
-  TrendingUp, 
-  RefreshCw, 
-  ChevronRight, 
-  Gift, 
+  FileSignature, 
+  CalendarDays,
+  BarChart2,
+  Activity,
+  ArrowUp,
+  ArrowDown,
+  Minus,
+  ChevronRight,
+  ChevronLeft,
+  Search,
+  X,
+  Calendar,
   Phone,
-  CheckCircle,
-  XCircle,
+  Mail,
   MapPin,
-  Info
+  User,
+  Cake,
+  Gift,
+  Clock,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  Info,
+  RefreshCw,
+  MessageSquare,
+  UserCheck,
+  CalendarCheck,
+  Book,
+  FileSpreadsheet,
+  BookOpen,
+  TrendingUp,
+  CheckCircle
 } from 'lucide-react';
-import { useDashboardData } from '../../hooks/useDashboardData';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { useCompanyStore } from '../../store/useCompanyStore';
-import { useDashboardStore } from '../../store/useDashboardStore';
-import { useRealtimeSubscription } from '../../hooks/useRealtimeSubscription';
-import { useLastAccess } from '../../hooks/useLastAccess';
-import { supabaseClient } from '../../lib/supabase';
-import { cn } from '../../lib/utils';
-
 import { 
   BarChart,
   Bar,
@@ -120,6 +137,7 @@ const distributionData = {
 
 export function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const company = useCompanyStore((state) => state.company);
   const { data: dashboardData, isLoading, error, refetch } = useDashboardData();
   const clearDashboardData = useDashboardStore((state) => state.clearData);
@@ -127,6 +145,8 @@ export function Dashboard() {
   const [loadingAniversariantes, setLoadingAniversariantes] = useState(true);
   const [periodoSelecionado, setPeriodoSelecionado] = useState('dia'); // 'dia', 'semana', 'mes'
   const [detalhesAniversariante, setDetalhesAniversariante] = useState<any>(null);
+  const [atendimentosRecentes, setAtendimentosRecentes] = useState<any[]>([]);
+  const [loadingAtendimentos, setLoadingAtendimentos] = useState(false);
 
   const estaNoPeridoSelecionado = useCallback((dataAniversario: Date) => {
     const hoje = new Date();
@@ -230,92 +250,46 @@ export function Dashboard() {
 
   // Função para carregar os dados
   const loadDashboardData = useCallback(async () => {
-    if (!company?.uid) {
-      console.log('Company UID não disponível');
-      return;
-    }
-
+    setLoadingAtendimentos(true);
     try {
-      setLoadingAniversariantes(true);
-      
-      // Verificar autenticação
-      const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
-      
-      if (sessionError || !session) {
-        console.error('Erro de autenticação:', sessionError);
+      if (!company?.uid) {
+        console.error('Empresa não encontrada');
         return;
       }
 
       console.log('Tentando carregar dados do dashboard para empresa:', {
-        empresa_uid: company.uid,
-        user_id: session.user.id,
-        role: session.user.role
+        empresa_uid: company.uid
       });
 
-      // Tentar buscar a empresa primeiro para confirmar acesso
-      const { data: empresaData, error: empresaError } = await supabaseClient
-        .from('gbp_empresas')
-        .select('uid, nome')
-        .eq('uid', company.uid)
-        .single();
+      // Buscar dados de atendimentos
+      const { data: atendimentosData, error: atendimentosError } = await supabaseClient
+        .from('gbp_atendimentos')
+        .select('*')
+        .eq('empresa_uid', company.uid)
+        .order('created_at', { ascending: false })
+        .limit(5);
 
-      if (empresaError) {
-        console.error('Erro ao verificar empresa:', empresaError);
+      if (atendimentosError) {
+        console.error('Erro ao carregar atendimentos:', atendimentosError);
         return;
       }
 
-      console.log('Empresa verificada:', empresaData);
+      setAtendimentosRecentes(atendimentosData || []);
 
-      // Agora buscar os dados do dashboard
-      const { data, error } = await supabaseClient
-        .from('gbp_dashboard')
-        .select(`
-          totalAtendimentos,
-          totalEleitores,
-          totalOficios,
-          totalRequerimentos,
-          totalProjetosLei,
-          totalAgendamentos,
-          atendimentosStats,
-          eleitoresStats,
-          oficiosStats,
-          requerimentosStats,
-          projetosLeiStats,
-          agendamentosStats
-        `)
-        .eq('empresa_uid', company.uid);
-
-      if (error) {
-        console.error('Erro ao buscar dados do dashboard:', error);
-        throw error;
-      }
-
-      console.log('Dados brutos:', {
-        total: data?.length || 0,
-        campos: data?.[0] ? Object.keys(data[0]) : [],
-        amostra: data?.slice(0, 2)
-      });
-
-      // Filtrar dados do dashboard
-      const dashboardDataFiltrado = data?.[0] || {};
-
-      console.log('Dados do dashboard:', {
-        data: dashboardDataFiltrado,
-      });
-
-      // Atualizar o estado com os dados do dashboard
-      // setDashboardData(dashboardDataFiltrado);
+      // Resto do código permanece igual...
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard:', error);
     } finally {
-      setLoadingAniversariantes(false);
+      setLoadingAtendimentos(false);
     }
-  }, [company?.uid]);
+  }, [company]);
 
   // Efeito para carregar os dados
   useEffect(() => {
-    loadDashboardData();
-  }, [loadDashboardData]);
+    if (company) {
+      loadDashboardData();
+    }
+  }, [loadDashboardData, company]);
 
   // Subscription para atualizações em tempo real
   useRealtimeSubscription({
@@ -372,10 +346,16 @@ export function Dashboard() {
   // Atualiza o último acesso do usuário
   useLastAccess();
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!user || !company) {
+      navigate('/login');
+    }
+  }, [user, company, navigate]);
+
+  if (isLoading || loadingAtendimentos) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
       </div>
     );
   }

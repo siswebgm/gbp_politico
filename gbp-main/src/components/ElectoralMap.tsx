@@ -1,492 +1,342 @@
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, LayerGroup, LayersControl } from 'react-leaflet';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, ZoomControl } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
-import 'leaflet/dist/leaflet.css';
-import '../styles/leaflet.css';
 import L from 'leaflet';
-import { debounce } from 'lodash';
-
-// Importando os ícones
-import iconUrl from 'leaflet/dist/images/marker-icon.png';
-import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
-import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
-
-// Corrigindo os ícones do Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl,
-  iconUrl,
-  shadowUrl,
-});
-
-// Cache de ícones
-const markerIcon = new L.Icon({
-  iconUrl,
-  iconRetinaUrl,
-  shadowUrl,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+import 'leaflet/dist/leaflet.css';
+import { User, ChevronRight, ChevronLeft, MapPin, Building2, Building, Maximize2, Minimize2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface Voter {
   id: string;
+  uid: string;
   name: string;
   address: string;
   lat: number;
   lng: number;
+  whatsapp?: string;
+  categoria_uid?: string;
   bairro?: string;
   cidade?: string;
-  estado?: string;
-  influencia?: 'alta' | 'media' | 'baixa';
-  categoria?: string;
+  uf?: string;
 }
 
-interface ElectoralMapProps {
+interface MapComponentProps {
   voters: Voter[];
-  center?: [number, number];
-  zoom?: number;
-  pageSize?: number;
+  loading?: boolean;
 }
 
-// Estilos personalizados para os marcadores
-const customIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
-
-// Estilos CSS para os clusters
-const clusterStyles = `
-  .marker-cluster-small {
-    background-color: rgba(241, 128, 23, 0.6);
-  }
-  .marker-cluster-small div {
-    background-color: rgba(240, 194, 12, 0.6);
-  }
-
-  .marker-cluster-medium {
-    background-color: rgba(241, 128, 23, 0.6);
-  }
-  .marker-cluster-medium div {
-    background-color: rgba(240, 194, 12, 0.6);
-  }
-
-  .marker-cluster-large {
-    background-color: rgba(241, 128, 23, 0.6);
-  }
-  .marker-cluster-large div {
-    background-color: rgba(240, 194, 12, 0.6);
-  }
-
-  .marker-cluster {
-    background-clip: padding-box;
-    border-radius: 20px;
-  }
-
-  .marker-cluster div {
-    width: 30px;
-    height: 30px;
-    margin-left: 5px;
-    margin-top: 5px;
-    text-align: center;
-    border-radius: 15px;
-    font-size: 12px;
-    color: #000;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .marker-cluster span {
-    line-height: 30px;
-  }
-`;
-
-// Componente para adicionar estilos CSS
-const MapStyles = () => {
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.type = 'text/css';
-    style.appendChild(document.createTextNode(clusterStyles));
-    document.head.appendChild(style);
-
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
-
-  return null;
-};
-
-// Ícone personalizado para os marcadores
-const voterIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
-
-// Componente para os marcadores
-const VoterMarkers = ({ voters, map }: { voters: Voter[]; map: L.Map }) => {
-  const markersRef = useRef<L.Marker[]>([]);
-  const markerLayerRef = useRef<L.LayerGroup | null>(null);
-
-  useEffect(() => {
-    // Limpa marcadores anteriores
-    if (markerLayerRef.current) {
-      markerLayerRef.current.clearLayers();
-      map.removeLayer(markerLayerRef.current);
-    }
-
-    // Cria novo grupo de camadas
-    markerLayerRef.current = L.layerGroup().addTo(map);
-
-    // Adiciona os marcadores
-    markersRef.current = voters.map(voter => {
-      const marker = L.marker([voter.lat, voter.lng], {
-        icon: voterIcon,
-        title: voter.name
-      });
-
-      // Popup informativo
-      marker.bindPopup(`
-        <div class="p-4 min-w-[250px]">
-          <h3 class="text-lg font-bold mb-2">${voter.name}</h3>
-          <p class="text-gray-600 mb-2">${voter.address}</p>
-          ${voter.bairro ? `<p class="text-gray-600 mb-2">Bairro: ${voter.bairro}</p>` : ''}
-          ${voter.cidade ? `<p class="text-gray-600 mb-2">Cidade: ${voter.cidade}</p>` : ''}
-          <div class="mt-3">
-            ${voter.influencia ? `
-              <span class="inline-block px-2 py-1 rounded-full text-xs font-semibold mr-2 ${
-                voter.influencia === 'alta' ? 'bg-green-100 text-green-800' : 
-                voter.influencia === 'media' ? 'bg-yellow-100 text-yellow-800' : 
-                'bg-red-100 text-red-800'
-              }">
-                Influência: ${voter.influencia.charAt(0).toUpperCase() + voter.influencia.slice(1)}
-              </span>
-            ` : ''}
-            ${voter.categoria ? `
-              <span class="inline-block px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-semibold">
-                ${voter.categoria.charAt(0).toUpperCase() + voter.categoria.slice(1)}
-              </span>
-            ` : ''}
-          </div>
-        </div>
-      `);
-
-      markerLayerRef.current?.addLayer(marker);
-      return marker;
-    });
-
-    // Ajusta o zoom para mostrar todos os marcadores
-    if (voters.length > 0) {
-      const bounds = L.latLngBounds(voters.map(voter => [voter.lat, voter.lng]));
-      map.fitBounds(bounds, { padding: [50, 50] });
-    }
-
-    return () => {
-      if (markerLayerRef.current) {
-        map.removeLayer(markerLayerRef.current);
-      }
-      markersRef.current.forEach(marker => marker.remove());
-    };
-  }, [voters, map]);
-
-  return null;
-};
-
-// Componente otimizado para análise de densidade
-const OptimizedDensityAnalysis = ({ voters, map }: { voters: Voter[]; map: L.Map }) => {
-  const densityLayerRef = useRef<L.LayerGroup | null>(null);
-  const bounds = map.getBounds();
-  const zoom = map.getZoom();
-
-  const getColor = useCallback((count: number) => {
-    return count > 20 ? '#800026' :
-           count > 15 ? '#BD0026' :
-           count > 10 ? '#E31A1C' :
-           count > 5  ? '#FC4E2A' :
-           count > 2  ? '#FD8D3C' :
-                       '#FEB24C';
-  }, []);
-
-  useEffect(() => {
-    if (zoom < 12) {
-      if (densityLayerRef.current) {
-        densityLayerRef.current.clearLayers();
-      }
-      return;
-    }
-
-    const visibleVoters = voters.filter(voter => 
-      bounds.contains([voter.lat, voter.lng])
-    ).slice(0, 300); 
-
-    const bairrosCount = visibleVoters.reduce((acc, voter) => {
-      const bairro = voter.bairro || 'Desconhecido';
-      acc[bairro] = (acc[bairro] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    if (!densityLayerRef.current) {
-      densityLayerRef.current = L.layerGroup().addTo(map);
-    }
-
-    densityLayerRef.current.clearLayers();
-
-    visibleVoters.forEach((voter) => {
-      const count = bairrosCount[voter.bairro || 'Desconhecido'];
-      L.circle([voter.lat, voter.lng], {
-        radius: 100,
-        color: getColor(count),
-        fillColor: getColor(count),
-        fillOpacity: 0.3,
-        weight: 1
-      }).addTo(densityLayerRef.current!);
-    });
-
-    return () => {
-      if (densityLayerRef.current) {
-        densityLayerRef.current.clearLayers();
-      }
-    };
-  }, [voters, bounds, zoom, getColor]);
-
-  return null;
-};
-
-const ElectoralMap = ({ 
-  voters, 
-  center = [-8.0476, -34.8770],
-  zoom = 12,
-  pageSize = 1000
-}: ElectoralMapProps) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+const MapComponent = ({ voters, loading }: MapComponentProps) => {
   const mapRef = useRef<L.Map | null>(null);
-  const markersRef = useRef<L.LatLng[]>([]);
-  const boundsRef = useRef<L.LatLngBounds | null>(null);
+  const navigate = useNavigate();
+  const [showStats, setShowStats] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Filtragem otimizada com useMemo
-  const filteredVoters = useMemo(() => {
-    const searchLower = searchTerm.toLowerCase();
-    return voters
-      .filter(voter => {
-        if (!searchLower) return true;
-        return (
-          voter.name.toLowerCase().includes(searchLower) ||
-          voter.address.toLowerCase().includes(searchLower) ||
-          voter.bairro?.toLowerCase().includes(searchLower) ||
-          voter.cidade?.toLowerCase().includes(searchLower)
-        );
-      })
-      .slice(0, 1000);
-  }, [voters, searchTerm]);
+  const [stats, setStats] = useState({
+    totalBairros: 0,
+    bairroMaisVotos: '',
+    totalVotosBairro: 0,
+    totalCidades: 0,
+    cidadeMaisVotos: '',
+    totalVotosCidade: 0,
+  });
 
-  // Paginação otimizada
-  const paginatedVoters = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredVoters.slice(start, start + pageSize);
-  }, [filteredVoters, currentPage, pageSize]);
+  useEffect(() => {
+    if (!voters.length) return;
 
-  // Estatísticas otimizadas
-  const stats = useMemo(() => ({
-    total: filteredVoters.length,
-    altaInfluencia: filteredVoters.filter(v => v.influencia === 'alta').length,
-    mediaInfluencia: filteredVoters.filter(v => v.influencia === 'media').length,
-    baixaInfluencia: filteredVoters.filter(v => v.influencia === 'baixa').length,
-    lideres: filteredVoters.filter(v => v.categoria === 'lider').length,
-    bairros: new Set(filteredVoters.map(v => v.bairro)).size,
-    cidades: new Set(filteredVoters.map(v => v.cidade)).size
-  }), [filteredVoters]);
+    const bairros = new Map<string, number>();
+    const cidades = new Map<string, number>();
 
-  // Função para ajustar o mapa aos marcadores filtrados
-  const fitMapToBounds = useCallback(() => {
-    if (!mapInstance || filteredVoters.length === 0) return;
-
-    // Calcula os bounds com base nos eleitores filtrados
-    const points = filteredVoters.map(voter => [voter.lat, voter.lng] as L.LatLngTuple);
-    const bounds = L.latLngBounds(points);
-    
-    // Armazena os bounds para referência
-    boundsRef.current = bounds;
-
-    // Ajusta o mapa com animação
-    mapInstance.flyToBounds(bounds, {
-      padding: [50, 50],
-      maxZoom: 15,
-      duration: 1.5 // Aumentado para animação mais suave
+    voters.forEach(voter => {
+      if (voter.bairro) {
+        bairros.set(voter.bairro, (bairros.get(voter.bairro) || 0) + 1);
+      }
+      if (voter.cidade) {
+        cidades.set(voter.cidade, (cidades.get(voter.cidade) || 0) + 1);
+      }
     });
 
-    // Atualiza os marcadores
-    markersRef.current = filteredVoters.map(voter => L.latLng(voter.lat, voter.lng));
-  }, [filteredVoters, mapInstance]);
+    const bairrosArray = Array.from(bairros.entries());
+    const cidadesArray = Array.from(cidades.entries());
+    
+    const bairroMaisVotado = bairrosArray.sort((a, b) => b[1] - a[1])[0];
+    const cidadeMaisVotada = cidadesArray.sort((a, b) => b[1] - a[1])[0];
 
-  // Efeito para ajustar o mapa quando os filtros mudam
+    setStats({
+      totalBairros: bairros.size,
+      bairroMaisVotos: bairroMaisVotado?.[0] || '',
+      totalVotosBairro: bairroMaisVotado?.[1] || 0,
+      totalCidades: cidades.size,
+      cidadeMaisVotos: cidadeMaisVotada?.[0] || '',
+      totalVotosCidade: cidadeMaisVotada?.[1] || 0,
+    });
+  }, [voters]);
+
+  const customIcon = useMemo(() => new L.DivIcon({
+    html: `<div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+           </div>`,
+    className: 'custom-div-icon',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+  }), []);
+
+  const renderPopup = useCallback((voter: Voter) => (
+    <div className="min-w-[200px]">
+      <h3 className="font-semibold text-lg mb-2">{voter.name}</h3>
+      <p className="text-sm text-gray-600 mb-3">{voter.address}</p>
+      <div className="flex flex-col gap-2">
+        {voter.whatsapp && (
+          <a
+            href={`https://wa.me/55${voter.whatsapp.replace(/\D/g, '')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center text-sm text-green-600 hover:text-green-700"
+          >
+            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+            </svg>
+            Enviar mensagem
+          </a>
+        )}
+        <button
+          onClick={() => navigate(`/app/eleitores/${voter.uid}`)}
+          className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700"
+        >
+          <User className="w-4 h-4 mr-1" />
+          Ver detalhes
+        </button>
+      </div>
+    </div>
+  ), [navigate]);
+
   useEffect(() => {
-    if (mapInstance && filteredVoters.length > 0) {
-      // Pequeno delay para garantir que o mapa está pronto
-      const timer = setTimeout(() => {
-        fitMapToBounds();
-      }, 100);
-      
-      return () => clearTimeout(timer);
+    if (mapRef.current && voters.length > 0) {
+      const bounds = L.latLngBounds(voters.map(voter => [voter.lat, voter.lng]));
+      mapRef.current.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [filteredVoters, mapInstance, fitMapToBounds]);
+  }, [voters]);
 
-  // Configuração inicial do mapa
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
   useEffect(() => {
-    if (mapInstance && !mapRef.current) {
-      mapRef.current = mapInstance;
-      
-      // Configurações de performance
-      mapInstance.options.preferCanvas = true;
-      mapInstance.options.renderer = L.canvas();
-
-      // Event listeners
-      const handleMoveEnd = () => {
-        if (boundsRef.current) {
-          const currentBounds = mapInstance.getBounds();
-          const currentCenter = mapInstance.getCenter();
-          
-          // Verifica se o centro atual está dentro dos bounds dos marcadores
-          if (!boundsRef.current.contains(currentCenter)) {
-            mapInstance.flyToBounds(boundsRef.current, {
-              padding: [50, 50],
-              maxZoom: 15,
-              duration: 1
-            });
-          }
-        }
-      };
-
-      mapInstance.on('moveend', handleMoveEnd);
-      mapInstance.on('zoomend', () => {
-        const currentZoom = mapInstance.getZoom();
-        if (currentZoom < 12) {
-          mapInstance.getPane('markerPane')?.style.setProperty('opacity', '0.5');
-        } else {
-          mapInstance.getPane('markerPane')?.style.setProperty('opacity', '1');
-        }
-      });
-
-      // Ajuste inicial
-      fitMapToBounds();
-    }
-
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.off('moveend');
-        mapRef.current.off('zoomend');
-      }
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
     };
-  }, [mapInstance, fitMapToBounds]);
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-4 p-4 bg-white rounded-lg shadow">
-        <input
-          type="text"
-          placeholder="Buscar por nome, endereço, bairro ou cidade..."
-          className="flex-1 p-2 border rounded"
-          value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
-            setCurrentPage(1);
-          }}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-        <div className="p-4 bg-white rounded-lg shadow">
-          <h3 className="text-lg font-semibold">Total de Eleitores</h3>
-          <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
-        </div>
-        <div className="p-4 bg-white rounded-lg shadow">
-          <h3 className="text-lg font-semibold">Alta Influência</h3>
-          <p className="text-2xl font-bold text-green-600">{stats.altaInfluencia}</p>
-        </div>
-        <div className="p-4 bg-white rounded-lg shadow">
-          <h3 className="text-lg font-semibold">Média Influência</h3>
-          <p className="text-2xl font-bold text-yellow-600">{stats.mediaInfluencia}</p>
-        </div>
-        <div className="p-4 bg-white rounded-lg shadow">
-          <h3 className="text-lg font-semibold">Baixa Influência</h3>
-          <p className="text-2xl font-bold text-red-600">{stats.baixaInfluencia}</p>
-        </div>
-        <div className="p-4 bg-white rounded-lg shadow">
-          <h3 className="text-lg font-semibold">Líderes</h3>
-          <p className="text-2xl font-bold text-blue-600">{stats.lideres}</p>
-        </div>
-        <div className="p-4 bg-white rounded-lg shadow">
-          <h3 className="text-lg font-semibold">Cidades</h3>
-          <p className="text-2xl font-bold text-purple-600">{stats.cidades}</p>
-        </div>
-        <div className="p-4 bg-white rounded-lg shadow">
-          <h3 className="text-lg font-semibold">Bairros</h3>
-          <p className="text-2xl font-bold text-indigo-600">{stats.bairros}</p>
-        </div>
-      </div>
-
-      <div className="w-full h-[600px] rounded-lg overflow-hidden shadow-lg">
-        <MapContainer
-          center={center}
-          zoom={zoom}
-          style={{ height: '100%', width: '100%' }}
-          className="z-0"
-          minZoom={4}
-          maxZoom={18}
-          preferCanvas={true}
-          whenCreated={setMapInstance}
-        >
-          <MapStyles />
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          />
+    <div ref={containerRef} className="h-full w-full relative">
+      {voters.length > 0 && (
+        <div className="absolute top-4 right-0 z-[1000] flex items-start">
+          <button
+            onClick={() => setShowStats(!showStats)}
+            className="group flex items-center justify-center w-10 h-10 bg-white dark:bg-gray-800 rounded-l-lg shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            title={showStats ? "Ocultar estatísticas" : "Mostrar estatísticas"}
+          >
+            {showStats ? (
+              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:text-gray-400 dark:group-hover:text-gray-200 transition-colors" />
+            ) : (
+              <ChevronLeft className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:text-gray-400 dark:group-hover:text-gray-200 transition-colors" />
+            )}
+          </button>
           
-          {mapInstance && (
-            <>
-              <VoterMarkers voters={paginatedVoters} map={mapInstance} />
-              <OptimizedDensityAnalysis voters={paginatedVoters} map={mapInstance} />
-            </>
-          )}
-        </MapContainer>
-      </div>
+          <div className={`bg-white dark:bg-gray-800 rounded-l-lg shadow-lg overflow-hidden transition-all duration-300 ${
+            showStats ? 'w-[300px] opacity-100' : 'w-0 opacity-0'
+          }`}>
+            <div className="p-4 min-w-[300px]">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-blue-500" />
+                  Estatísticas do Mapa
+                </h3>
+                <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                  {voters.length} eleitores
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Card de Bairros */}
+                <div className="relative group">
+                  <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-700 dark:to-gray-600 rounded-lg transition-all duration-300 hover:shadow-md">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-blue-500 rounded-lg">
+                          <Building2 className="w-4 h-4 text-white" />
+                        </div>
+                        <h4 className="font-medium text-gray-900 dark:text-white">Bairros</h4>
+                      </div>
+                      <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        {stats.totalBairros}
+                      </span>
+                    </div>
+                    
+                    {stats.bairroMaisVotos && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-300">Mais populoso</span>
+                          <span className="font-medium text-gray-900 dark:text-white">{stats.bairroMaisVotos}</span>
+                        </div>
+                        <div className="relative pt-1">
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-blue-600 dark:text-blue-400 font-semibold">
+                              {stats.totalVotosBairro} eleitores
+                            </span>
+                            <span className="text-gray-500 dark:text-gray-400">
+                              {Math.round((stats.totalVotosBairro / voters.length) * 100)}% do total
+                            </span>
+                          </div>
+                          <div className="overflow-hidden h-2 text-xs flex rounded bg-blue-200 dark:bg-gray-600">
+                            <div
+                              style={{ width: `${(stats.totalVotosBairro / voters.length) * 100}%` }}
+                              className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-      {filteredVoters.length > pageSize && (
-        <div className="flex justify-center gap-2 mt-4">
-          <button
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
-          >
-            Anterior
-          </button>
-          <span className="px-4 py-2">
-            Página {currentPage} de {Math.ceil(filteredVoters.length / pageSize)}
-          </span>
-          <button
-            onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredVoters.length / pageSize), p + 1))}
-            disabled={currentPage >= Math.ceil(filteredVoters.length / pageSize)}
-            className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
-          >
-            Próxima
-          </button>
+                {/* Card de Cidades */}
+                <div className="relative group">
+                  <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-gray-700 dark:to-gray-600 rounded-lg transition-all duration-300 hover:shadow-md">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-green-500 rounded-lg">
+                          <Building className="w-4 h-4 text-white" />
+                        </div>
+                        <h4 className="font-medium text-gray-900 dark:text-white">Cidades</h4>
+                      </div>
+                      <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+                        {stats.totalCidades}
+                      </span>
+                    </div>
+                    
+                    {stats.cidadeMaisVotos && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-300">Mais populosa</span>
+                          <span className="font-medium text-gray-900 dark:text-white">{stats.cidadeMaisVotos}</span>
+                        </div>
+                        <div className="relative pt-1">
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-green-600 dark:text-green-400 font-semibold">
+                              {stats.totalVotosCidade} eleitores
+                            </span>
+                            <span className="text-gray-500 dark:text-gray-400">
+                              {Math.round((stats.totalVotosCidade / voters.length) * 100)}% do total
+                            </span>
+                          </div>
+                          <div className="overflow-hidden h-2 text-xs flex rounded bg-green-200 dark:bg-gray-600">
+                            <div
+                              style={{ width: `${(stats.totalVotosCidade / voters.length) * 100}%` }}
+                              className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
+
+      {/* Botão de Tela Cheia */}
+      <div className="absolute top-24 left-4 z-[1000]">
+        <button
+          onClick={toggleFullscreen}
+          className="flex items-center justify-center w-10 h-10 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          title={isFullscreen ? "Sair da tela cheia" : "Entrar em tela cheia"}
+        >
+          {isFullscreen ? (
+            <Minimize2 className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          ) : (
+            <Maximize2 className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          )}
+        </button>
+      </div>
+
+      <MapContainer
+        center={[-8.0476, -34.8770]}
+        zoom={12}
+        style={{ height: '100%', width: '100%' }}
+        ref={mapRef}
+        zoomControl={false}
+      >
+        <ZoomControl position="topleft" /> {/* Controle de zoom na posição padrão */}
+        
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+
+        <MarkerClusterGroup
+          chunkedLoading={true}
+          chunkInterval={50}
+          chunkDelay={10}
+          maxClusterRadius={80}
+          spiderfyOnMaxZoom={true}
+          showCoverageOnHover={false}
+          zoomToBoundsOnClick={true}
+          removeOutsideVisibleBounds={true}
+          animate={false}
+          disableClusteringAtZoom={18}
+          spiderfyDistanceMultiplier={2}
+          options={{
+            maxZoom: 18,
+            minimumClusterSize: 3
+          }}
+        >
+          {useMemo(() => voters.map((voter) => (
+            <Marker
+              key={voter.uid}
+              position={[voter.lat, voter.lng]}
+              icon={customIcon}
+            >
+              <Popup>
+                {renderPopup(voter)}
+              </Popup>
+            </Marker>
+          )), [voters, customIcon, renderPopup])}
+        </MarkerClusterGroup>
+
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-800/80 z-[1000]">
+            <div className="flex flex-col items-center gap-2">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="text-sm text-gray-600 dark:text-gray-300">Carregando eleitores...</span>
+            </div>
+          </div>
+        )}
+      </MapContainer>
+
+      <style jsx global>{`
+        .custom-div-icon {
+          background: none;
+          border: none;
+        }
+      `}</style>
     </div>
   );
 };
 
-export default ElectoralMap;
+export default MapComponent;

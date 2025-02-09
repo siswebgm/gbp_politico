@@ -217,6 +217,12 @@ export function Users() {
     setIsEditModalOpen(true);
   };
 
+  const handleEditSuccess = () => {
+    loadUsers();
+    setIsEditModalOpen(false);
+    toast.success('Usuário atualizado com sucesso!');
+  };
+
   const handleDeleteClick = (user: UserType) => {
     setSelectedUser(user);
     setIsDeleteModalOpen(true);
@@ -669,162 +675,14 @@ export function Users() {
         onSuccess={loadUsers}
         empresaUid={company?.uid || ''}
       />
-      <Dialog open={isEditModalOpen} onOpenChange={() => {
-        setIsEditModalOpen(false);
-        setSelectedUser(null);
-      }}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">
-              {selectedUser ? 'Editar Usuário' : 'Novo Usuário'}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedUser ? 'Atualize os dados do usuário' : 'Preencha os dados para criar um novo usuário'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            // Implementar lógica de edição de usuário aqui
-          }} className="space-y-6 mt-4">
-            <div className="space-y-4">
-              {/* Nome */}
-              <div className="space-y-2">
-                <Label htmlFor="nome">Nome</Label>
-                <Input
-                  id="nome"
-                  placeholder="Digite o nome completo"
-                  value={selectedUser?.nome || ''}
-                  onChange={(e) => {
-                    // Implementar lógica de atualização do nome do usuário aqui
-                  }}
-                  className="w-full"
-                />
-              </div>
-
-              {/* Email */}
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Digite o email"
-                  value={selectedUser?.email || ''}
-                  onChange={(e) => {
-                    // Implementar lógica de atualização do email do usuário aqui
-                  }}
-                  className="w-full"
-                />
-              </div>
-
-              {/* Status */}
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={selectedUser?.status || 'active'}
-                  onValueChange={(value) => {
-                    // Implementar lógica de atualização do status do usuário aqui
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione o status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-green-500" />
-                        Ativo
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="inactive">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-gray-400" />
-                        Inativo
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="blocked">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-red-500" />
-                        Bloqueado
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Nível de Acesso */}
-              <div className="space-y-2">
-                <Label htmlFor="cargo">Nível de Acesso</Label>
-                <Select
-                  value={selectedUser?.cargo || 'admin'}
-                  onValueChange={(value) => {
-                    // Implementar lógica de atualização do nível de acesso do usuário aqui
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione o nível de acesso" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="h-4 w-4 text-primary" />
-                        Admin
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="geral">
-                      <div className="flex items-center gap-2">
-                        <UsersIcon className="h-4 w-4 text-blue-500" />
-                        Geral
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="comum">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-gray-500" />
-                        Comum
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Senha - apenas para novo usuário */}
-              {!selectedUser && (
-                <div className="space-y-2">
-                  <Label htmlFor="senha">Senha</Label>
-                  <Input
-                    id="senha"
-                    type="password"
-                    placeholder="Digite a senha"
-                    value=""
-                    onChange={(e) => {
-                      // Implementar lógica de atualização da senha do usuário aqui
-                    }}
-                    className="w-full"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Botões */}
-            <DialogFooter className="gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsEditModalOpen(false);
-                  setSelectedUser(null);
-                }}
-                disabled={false}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={false}>
-                {selectedUser ? 'Salvar Alterações' : 'Criar Usuário'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {isEditModalOpen && selectedUser && (
+        <EditUserModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSuccess={handleEditSuccess}
+          user={selectedUser}
+        />
+      )}
       <DeleteUserModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}

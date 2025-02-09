@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Building2, Mail, Lock, User, Phone, Globe, MapPin } from 'lucide-react';
-import { supabasePublicClient } from '../../lib/supabase';
+import { supabaseClient } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
 const registerSchema = z.object({
@@ -33,6 +33,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export function Register() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
   const {
     register,
     handleSubmit,
@@ -43,8 +44,10 @@ export function Register() {
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
+      setLoading(true);
+
       // 1. Criar empresa
-      const { data: companyData, error: companyError } = await supabasePublicClient
+      const { data: companyData, error: companyError } = await supabaseClient
         .from('gbp_empresas')
         .insert([{
           nome: data.companyName,
@@ -66,7 +69,7 @@ export function Register() {
       }
 
       // 2. Criar usuário na tabela gbp_usuarios
-      const { error: userError } = await supabasePublicClient
+      const { error: userError } = await supabaseClient
         .from('gbp_usuarios')
         .insert([{
           nome: data.userName,
@@ -94,6 +97,8 @@ export function Register() {
       } else {
         toast.error('Erro ao criar conta. Tente novamente.');
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -323,10 +328,10 @@ export function Register() {
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || loading}
                 className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? (
+                {isSubmitting || loading ? (
                   <div className="flex items-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     Criando...

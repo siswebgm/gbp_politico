@@ -5,10 +5,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useEleitores } from '../../../hooks/useEleitores';
 import { useIndicados } from '../../../hooks/useIndicados';
+import { useCategories } from '../../../hooks/useCategories';
 import { useQuery } from 'react-query';
 import { eleitorService } from '../../../services/eleitorService';
 import { EleitorFormData } from '../../../types/eleitor';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Plus } from 'lucide-react';
+import { cn } from '../../../lib/utils';
 
 const eleitorSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
@@ -30,10 +32,101 @@ const eleitorSchema = z.object({
   indicacao: z.string().optional(),
 });
 
+function CategoryAccordion({ categories, selectedCategory, onSelect }) {
+  const [openCategory, setOpenCategory] = useState<string | null>(null);
+
+  const toggleCategory = (categoryName: string) => {
+    setOpenCategory(openCategory === categoryName ? null : categoryName);
+  };
+
+  const mainCategories = {
+    'DOCUMENTOS': ['RG', 'CPF', 'CNH', 'Título de Eleitor'],
+    'SAÚDE': ['Consultas', 'Exames', 'Medicamentos', 'Cirurgias'],
+    'FUNCIONÁRIOS': ['Administrativo', 'Operacional', 'Gestão'],
+    'OUTROS': ['Geral', 'Diversos']
+  };
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpenCategory(openCategory ? null : 'main')}
+        className={cn(
+          "w-full px-3 py-2 flex items-center justify-between",
+          "text-sm text-gray-900 dark:text-white",
+          "border border-gray-300 dark:border-gray-600",
+          "rounded-md shadow-sm",
+          "hover:bg-gray-50 dark:hover:bg-gray-700",
+          "focus:outline-none focus:ring-2 focus:ring-blue-500",
+          openCategory && "ring-2 ring-blue-500"
+        )}
+      >
+        <span>{selectedCategory || "Selecione uma categoria..."}</span>
+        <ChevronDown
+          className={cn(
+            "w-4 h-4 text-gray-500",
+            "transition-transform duration-200",
+            openCategory && "transform rotate-180"
+          )}
+        />
+      </button>
+
+      {openCategory && (
+        <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700">
+          {Object.entries(mainCategories).map(([category, subcategories]) => (
+            <div key={category} className="border-b last:border-b-0 border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={() => toggleCategory(category)}
+                className={cn(
+                  "w-full px-3 py-2 flex items-center justify-between text-left",
+                  "text-sm font-medium text-gray-900 dark:text-white",
+                  "hover:bg-gray-50 dark:hover:bg-gray-700"
+                )}
+              >
+                <span>{category}</span>
+                <ChevronDown
+                  className={cn(
+                    "w-4 h-4 text-gray-500",
+                    "transition-transform duration-200",
+                    openCategory === category && "transform rotate-180"
+                  )}
+                />
+              </button>
+              {openCategory === category && (
+                <div className="bg-gray-50 dark:bg-gray-700/50">
+                  {subcategories.map((subcat) => (
+                    <button
+                      key={subcat}
+                      type="button"
+                      onClick={() => {
+                        onSelect(subcat);
+                        setOpenCategory(null);
+                      }}
+                      className={cn(
+                        "w-full px-4 py-2 text-left text-sm",
+                        "hover:bg-gray-100 dark:hover:bg-gray-600",
+                        selectedCategory === subcat && "bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200"
+                      )}
+                    >
+                      {subcat}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function NovoEleitor() {
   const navigate = useNavigate();
   const { createEleitor } = useEleitores({});
   const { data: indicados, isLoading: isLoadingIndicados } = useIndicados();
+  const { data: categories, isLoading: isLoadingCategories } = useCategories('eleitor');
   const [cpfError, setCpfError] = useState<string | null>(null);
   const company = { id: 1 }; // Substituir com o ID da empresa
   
@@ -181,6 +274,80 @@ export function NovoEleitor() {
                   <option value="FEMININO">Feminino</option>
                   <option value="OUTRO">Outro</option>
                 </select>
+              </div>
+
+              <div className="sm:col-span-3">
+                <div className="bg-yellow-100 dark:bg-yellow-900 p-2 mb-2 rounded-md">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                    [TESTE] Campo sendo atualizado - Categoria
+                  </p>
+                </div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Categoria*
+                </label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <select
+                      {...register('categoria_id')}
+                      className={cn(
+                        "mt-1 block w-full rounded-md shadow-sm sm:text-sm",
+                        "border-gray-300 focus:border-blue-500 focus:ring-blue-500",
+                        "dark:bg-gray-700 dark:border-gray-600 dark:text-white",
+                        isLoadingCategories && "bg-gray-50 dark:bg-gray-600"
+                      )}
+                      disabled={isLoadingCategories}
+                    >
+                      <option value="">Selecione uma categoria...</option>
+                      {categories?.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.nome}
+                        </option>
+                      ))}
+                    </select>
+                    {isLoadingCategories && (
+                      <div className="absolute right-3 top-3">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className={cn(
+                      "mt-1 p-2 rounded-md",
+                      "border border-gray-300 dark:border-gray-600",
+                      "hover:bg-gray-50 dark:hover:bg-gray-700",
+                      "focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    )}
+                  >
+                    <Plus className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                  </button>
+                </div>
+                {errors.categoria_id && (
+                  <p className="mt-1 text-sm text-red-600">{errors.categoria_id.message}</p>
+                )}
+              </div>
+
+              <div className="sm:col-span-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Indicado por
+                </label>
+                <select
+                  {...register('indicacao')}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  disabled={isLoadingIndicados}
+                >
+                  <option value="">Selecione um indicado...</option>
+                  {indicados && indicados.map((indicado) => (
+                    <option key={indicado.id} value={indicado.id}>
+                      {indicado.nome}
+                    </option>
+                  ))}
+                </select>
+                {isLoadingIndicados ? (
+                  <p className="mt-1 text-sm text-gray-500">Carregando indicados...</p>
+                ) : indicados?.length === 0 && (
+                  <p className="mt-1 text-sm text-gray-500">Nenhum indicado encontrado</p>
+                )}
               </div>
             </div>
           </div>
@@ -350,19 +517,6 @@ export function NovoEleitor() {
               Relacionamentos
             </h3>
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-              <div className="sm:col-span-3">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Categoria
-                </label>
-                <select
-                  {...register('categoria_id')}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                >
-                  <option value="">Selecione...</option>
-                  {/* TODO: Adicionar categorias do banco */}
-                </select>
-              </div>
-
               <div className="sm:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Indicado por

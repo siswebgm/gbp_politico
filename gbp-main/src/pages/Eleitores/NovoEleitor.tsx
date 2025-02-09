@@ -14,6 +14,7 @@ import { useToast } from "../../components/ui/use-toast";
 import { NovaCategoriaModal } from './components/NovaCategoriaModal';
 import { NovoIndicadoModal } from './components/NovoIndicadoModal';
 import { NestedCategoryDropdown } from '../../components/NestedCategoryDropdown';
+import { cn } from '../../lib/utils';
 
 interface Indicado {
   uid: string;
@@ -240,6 +241,16 @@ export const NovoEleitor: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [cepValue, fetchAddress, setValue, lastCheckedCep]);
 
+  // Adicionar este useEffect após os outros useEffects no componente
+  useEffect(() => {
+    const nascimento = watch('nascimento');
+    if (nascimento && nascimento.includes('-')) {
+      const [year, month, day] = nascimento.split('-');
+      const formattedDate = `${day}/${month}/${year}`;
+      setValue('nascimento', formattedDate);
+    }
+  }, [watch('nascimento')]);
+
   // Função para validar os campos de atendimento
   const validateAtendimentoFields = () => {
     const errors = {
@@ -307,8 +318,25 @@ export const NovoEleitor: React.FC = () => {
         nome: formatName(currentValues.nome),
         cpf: currentValues.cpf.replace(/\D/g, ''),
         nome_mae: formatName(currentValues.nome_mae),
-        nascimento: currentValues.nascimento,
-        mes_nascimento: new Date(currentValues.nascimento).getMonth() + 1, // Extrai o mês (1-12)
+        nascimento: (() => {
+          const value = currentValues.nascimento;
+          if (!value) return null;
+          // Se já estiver no formato YYYY-MM-DD, retorna como está
+          if (value.includes('-')) return value;
+          // Se estiver no formato DD/MM/YYYY, converte para YYYY-MM-DD
+          const [day, month, year] = value.split('/');
+          return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        })(),
+        mes_nascimento: (() => {
+          const value = currentValues.nascimento;
+          if (!value) return null;
+          if (value.includes('-')) {
+            const [year, month] = value.split('-');
+            return parseInt(month);
+          }
+          const [, month] = value.split('/');
+          return parseInt(month);
+        })(),
         whatsapp: currentValues.whatsapp.replace(/\D/g, ''),
         telefone: currentValues.telefone.replace(/\D/g, ''),
         genero: currentValues.genero,
@@ -565,12 +593,36 @@ export const NovoEleitor: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">
                     Data de Nascimento <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="date"
-                    placeholder="Data de nascimento"
+                  <InputMask
+                    mask="99/99/9999"
+                    maskChar={null}
+                    placeholder="DD/MM/AAAA"
                     {...register('nascimento', { required: true })}
                     className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:border-blue-500 dark:focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-500"
                     style={globalStyles.input}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value && value.length === 10) {
+                        const [day, month, year] = value.split('/');
+                        const numDay = parseInt(day, 10);
+                        const numMonth = parseInt(month, 10);
+                        const numYear = parseInt(year, 10);
+                        const currentYear = new Date().getFullYear();
+
+                        // Validação da data
+                        if (numMonth >= 1 && numMonth <= 12 && numYear >= 1900 && numYear <= currentYear) {
+                          const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+                          if (numYear % 4 === 0 && (numYear % 100 !== 0 || numYear % 400 === 0)) {
+                            daysInMonth[1] = 29;
+                          }
+
+                          if (numDay >= 1 && numDay <= daysInMonth[numMonth - 1]) {
+                            // Data válida, formata para YYYY-MM-DD
+                            setValue('nascimento', `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+                          }
+                        }
+                      }
+                    }}
                   />
                   {errors.nascimento && <span className="text-red-500 text-sm">Campo obrigatório</span>}
                 </div>
@@ -594,7 +646,7 @@ export const NovoEleitor: React.FC = () => {
                   )}
                 </div>
 
-                <div className="relative">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">
                     Categoria <span className="text-red-500">*</span>
                   </label>
@@ -607,12 +659,27 @@ export const NovoEleitor: React.FC = () => {
                         isLoading={isLoadingCategorias}
                         error={errors.categoria_uid?.message}
                         placeholder="Selecione uma categoria..."
+                        className={cn(
+                          "w-full rounded-lg border border-gray-300 shadow-sm sm:text-sm",
+                          "bg-white dark:bg-gray-800 text-gray-900 dark:text-white",
+                          "border-gray-300 dark:border-gray-600",
+                          "focus:border-blue-500 focus:ring-blue-500",
+                          "dark:focus:border-blue-500 dark:focus:ring-blue-500",
+                          isLoadingCategorias && "bg-gray-50 dark:bg-gray-600"
+                        )}
                       />
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowNovaCategoriaModal(true)}
-                      className="p-2.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center justify-center border border-gray-300 dark:border-gray-600"
+                      className={cn(
+                        "p-2.5 rounded-lg border",
+                        "text-gray-500 hover:text-gray-700",
+                        "dark:text-gray-400 dark:hover:text-gray-300",
+                        "hover:bg-gray-100 dark:hover:bg-gray-700",
+                        "border-gray-300 dark:border-gray-600",
+                        "focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      )}
                       title="Nova Categoria"
                     >
                       <Plus className="h-4 w-4" />

@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Building2, Mail, Phone, MapPin, Search, User } from 'lucide-react';
-import { supabaseClient, supabasePublicClient } from '../../../lib/supabase';
+import { supabaseClient } from '../../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -129,94 +129,72 @@ export function CreateCompanyModal({ isOpen, onClose, onSuccess }: CreateCompany
     try {
       setLoading(true);
 
-      // Cria a empresa
-      const { data: empresaData, error: empresaError } = await supabasePublicClient
+      // Criar empresa
+      const { data: empresaData, error: empresaError } = await supabaseClient
         .from('gbp_empresas')
-        .insert({
-          nome: data.nomeEmpresa,
-          cep: data.cep.replace(/\D/g, ''),
-          logradouro: data.logradouro,
-          numero: data.numero,
-          bairro: data.bairro,
-          cidade: data.cidade,
-          estado: data.estado,
-          status: 'trial',
-          data_expiracao: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString()
-        })
+        .insert([
+          {
+            nome: data.nomeEmpresa,
+            contato: data.telefoneEmpresa,
+            cep: data.cep,
+            logradouro: data.logradouro,
+            bairro: data.bairro,
+            cidade: data.cidade,
+            estado: data.estado,
+            numero: data.numero,
+            status: 'trial',
+            data_expiracao: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 dias
+          },
+        ])
         .select()
         .single();
 
-      if (empresaError) {
-        console.error('Erro ao criar empresa:', empresaError);
-        throw new Error(`Erro ao criar empresa: ${empresaError.message}`);
-      }
+      if (empresaError) throw empresaError;
 
-      if (!empresaData) {
-        throw new Error('Erro ao criar empresa: Nenhum dado retornado');
-      }
-
-      // 2. Criar usuário na tabela gbp_usuarios com o ID da empresa
-      const { data: userData, error: userError } = await supabasePublicClient
+      // Criar usuário
+      const { data: userData, error: userError } = await supabaseClient
         .from('gbp_usuarios')
-        .insert({
-          nome: data.nomeAdmin,
-          email: data.email,
-          senha: data.senha,
-          cargo: 'admin',
-          nivel_acesso: 'admin',
-          status: 'active',
-          empresa_uid: empresaData.uid,
-          permissoes: [
-            'view_projetos_lei',
-            'create_projetos_lei',
-            'edit_projetos_lei',
-            'delete_projetos_lei',
-            'view_oficios',
-            'create_oficios',
-            'edit_oficios',
-            'delete_oficios',
-            'view_dashboard',
-            'manage_users',
-            'manage_roles',
-            'manage_settings'
-          ],
-          created_at: new Date().toISOString(),
-        })
+        .insert([
+          {
+            nome: data.nomeAdmin,
+            email: data.email,
+            senha: data.senha,
+            contato: data.telefoneAdmin,
+            empresa_uid: empresaData.uid,
+            nivel_acesso: 'admin',
+            status: 'active',
+          },
+        ])
         .select()
         .single();
 
       if (userError) {
-        // Se houver erro ao criar o usuário, deletar a empresa criada
-        await supabasePublicClient
+        // Se houver erro ao criar usuário, remover a empresa
+        await supabaseClient
           .from('gbp_empresas')
           .delete()
           .eq('uid', empresaData.uid);
-
-        console.error('Erro ao criar usuário:', userError);
-        throw new Error(`Erro ao criar usuário: ${userError.message}`);
+        throw userError;
       }
 
-      if (!userData) {
-        // Se não retornar dados do usuário, deletar a empresa criada
-        await supabasePublicClient
-          .from('gbp_empresas')
-          .delete()
-          .eq('uid', empresaData.uid);
+      // Criar configurações padrão
+      await supabaseClient.from('gbp_configuracoes').insert([
+        {
+          empresa_uid: empresaData.uid,
+          tipo: 'geral',
+          configuracoes: {
+            tema: 'light',
+            notificacoes: true,
+          },
+        },
+      ]);
 
-        throw new Error('Erro ao criar usuário: Nenhum dado retornado');
-      }
-
-      toast.success('Empresa criada com sucesso! Você tem 5 dias de período de teste.');
+      toast.success('Empresa criada com sucesso!');
       onSuccess();
-      reset();
       onClose();
     } catch (error) {
-      console.error('Error creating company:', error);
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error('Erro ao criar empresa');
-      }
+      console.error('Erro ao criar empresa:', error);
+      toast.error('Erro ao criar empresa. Por favor, tente novamente.');
     } finally {
       setLoading(false);
     }

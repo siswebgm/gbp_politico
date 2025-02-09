@@ -344,6 +344,26 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
     carregarFoto();
   }, [user?.uid]);
 
+  useEffect(() => {
+    const verificarStatusEmpresa = () => {
+      if (company?.status === 'cancelled') {
+        clearUserCacheAndRedirect();
+      }
+
+      const currentDate = new Date();
+      if (company?.status === 'trial' && new Date(company?.expiration_date) < currentDate) {
+        clearUserCacheAndRedirect();
+      }
+    };
+
+    verificarStatusEmpresa();
+  }, [company]);
+
+  const clearUserCacheAndRedirect = () => {
+    localStorage.clear();
+    window.location.href = '/login';
+  };
+
   // Carregar dados do usuário
   useEffect(() => {
     const fetchUserData = async () => {
@@ -383,6 +403,21 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
       fetchUserData();
     }
   }, [isOpen, user?.uid]);
+
+  useEffect(() => {
+    const verificarStatusEmpresa = () => {
+      if (company?.status === 'cancelled') {
+        clearUserCacheAndRedirect();
+      }
+
+      const currentDate = new Date();
+      if (company?.status === 'trial' && new Date(company?.expiration_date) < currentDate) {
+        clearUserCacheAndRedirect();
+      }
+    };
+
+    verificarStatusEmpresa();
+  }, [company]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

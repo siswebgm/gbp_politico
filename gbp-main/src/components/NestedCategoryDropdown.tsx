@@ -116,21 +116,21 @@ export const NestedCategoryDropdown: React.FC<NestedCategoryDropdownProps> = ({
         
         {/* Dropdown */}
         <div
-          className="absolute bg-white border border-gray-200 rounded-md shadow-lg overflow-y-auto"
+          className="absolute bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-y-auto"
           style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            maxHeight: '300px',
+            position: 'fixed',
+            top: dropdownRef.current?.getBoundingClientRect().bottom ?? 0,
+            left: dropdownRef.current?.getBoundingClientRect().left ?? 0,
+            width: dropdownRef.current?.offsetWidth ?? 'auto',
+            maxHeight: '400px',
             marginTop: '4px',
             zIndex: 50
           }}
         >
           {Object.entries(categorizedData).map(([tipo, categorias]) => (
-            <div key={tipo} className="border-b border-gray-200 last:border-0">
+            <div key={tipo} className="border-b border-gray-200 dark:border-gray-600 last:border-0">
               <div
-                className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50/80 dark:hover:bg-gray-700/80 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600"
+                className="flex items-center justify-between px-4 py-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 bg-gray-50/80 dark:bg-gray-700/80"
                 onClick={() => toggleCategory(tipo)}
               >
                 <div className="flex items-center space-x-2">
@@ -139,25 +139,31 @@ export const NestedCategoryDropdown: React.FC<NestedCategoryDropdownProps> = ({
                   ) : (
                     <ChevronRight className="h-4 w-4 text-blue-500" />
                   )}
-                  <span className="font-bold text-gray-900 dark:text-white text-sm uppercase tracking-wide">{tipo}</span>
+                  <span className="font-medium text-gray-900 dark:text-white text-sm">{tipo}</span>
                 </div>
               </div>
 
               {openCategories.includes(tipo) && (
-                <div className="bg-white dark:bg-gray-800 py-1">
+                <div className="bg-white dark:bg-gray-800">
                   {categorias.map((category) => (
                     <div
                       key={category.uid}
-                      className={`pl-10 pr-4 py-2 cursor-pointer border-l-2 ${
+                      className={`px-4 py-2 cursor-pointer ${
                         value === category.uid 
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 font-medium' 
-                          : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                          ? 'bg-blue-50 dark:bg-blue-900/20' 
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
                       }`}
                       onClick={() => handleSelect(category)}
                     >
-                      <span className={`text-gray-700 dark:text-gray-300 ${value === category.uid ? 'text-blue-600 dark:text-blue-400' : ''}`}>
-                        {category.nome}
-                      </span>
+                      <div className="flex items-center space-x-2 pl-6">
+                        <span className={`text-sm ${
+                          value === category.uid 
+                            ? 'text-blue-600 dark:text-blue-400 font-medium' 
+                            : 'text-gray-700 dark:text-gray-300'
+                        }`}>
+                          {category.nome}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>

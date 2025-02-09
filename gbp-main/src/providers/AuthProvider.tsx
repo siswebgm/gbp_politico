@@ -4,8 +4,6 @@ import { authService, AuthData } from '../services/auth';
 import { useCompanyStore } from '../store/useCompanyStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { supabaseClient } from '../lib/supabase';
-import { toast } from '../components/ui/use-toast';
-import { useCompanyStatusCheck } from '../hooks/useCompanyStatusCheck';
 
 interface Company {
   uid: string;
@@ -17,118 +15,62 @@ interface Company {
   data_expiracao?: string | null;
 }
 
-export interface User extends AuthData {}
-
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
-  user: User | null;
+  user: AuthData | null;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
-const LoadingSpinner = () => (
-  <div className="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center">
-    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
-  </div>
-);
+function LoadingSpinner() {
+  return (
+    <div className="flex justify-center items-center h-screen">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+    </div>
+  );
+}
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const setCompany = useCompanyStore((state) => state.setCompany);
-  const setCompanyUser = useCompanyStore((state) => state.setUser);
+  const [isLoading, setIsLoading] = useState(true);
   const authStore = useAuthStore();
-  const [isInitializing, setIsInitializing] = useState(true);
+  const companyStore = useCompanyStore();
 
-  // Função para carregar dados da empresa
-  const loadCompanyData = async (empresaUid: string) => {
+  const loadCompanyData = async (companyUid: string): Promise<Company | null> => {
     try {
-      const { data: companyData, error: companyError } = await supabaseClient
+      const { data: companyData, error } = await supabaseClient
         .from('gbp_empresas')
         .select('*')
-        .eq('uid', empresaUid)
+        .eq('uid', companyUid)
         .single();
 
-      if (!companyError && companyData) {
-        // Não exibimos mais o toast aqui, pois agora temos o TrialWarning
-        setCompany(companyData);
+      if (error) {
+        console.error('Erro ao carregar dados da empresa:', error);
+        return null;
+      }
+
+      if (companyData) {
+        localStorage.setItem('empresa_uid', companyData.uid);
+        companyStore.setCompany(companyData);
         return companyData;
       }
+
+      return null;
     } catch (error) {
       console.error('Erro ao carregar dados da empresa:', error);
-    }
-    return null;
-  };
-
-  // Função para verificar status da empresa
-  const checkCompanyStatus = (company: Company | null) => {
-    if (!company) return { isBlocked: true, message: 'Empresa não encontrada' };
-    
-    const now = new Date();
-    
-    switch (company.status) {
-      case 'trial':
-        if (company.data_expiracao && new Date(company.data_expiracao) < now) {
-          return { 
-            isBlocked: true, 
-            message: 'Período de teste expirado. Entre em contato com o suporte para ativar sua conta.' 
-          };
-        }
-        // Verifica se está próximo da expiração (7 dias)
-        if (company.data_expiracao) {
-          const expirationDate = new Date(company.data_expiracao);
-          const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-          
-          if (daysUntilExpiration <= 7 && daysUntilExpiration > 0) {
-            return { 
-              isBlocked: false, 
-              message: `Seu período de teste expira em ${daysUntilExpiration} dias. Entre em contato para ativar sua conta.`,
-              isWarning: true 
-            };
-          }
-        }
-        return { isBlocked: false };
-        
-      case 'active':
-        return { isBlocked: false };
-        
-      case 'cancelled':
-        return { 
-          isBlocked: true, 
-          message: 'Empresa bloqueada. Entre em contato com o suporte para reativar sua conta.' 
-        };
-        
-      default:
-        return { isBlocked: false };
+      return null;
     }
   };
 
-  // Função para carregar dados atualizados do usuário
-  const loadUserData = async (uid: string) => {
+  const loadUserData = async (userUid: string): Promise<boolean> => {
     try {
       const { data: userData, error } = await supabaseClient
         .from('gbp_usuarios')
-        .select(`
-          id,
-          uid,
-          nome,
-          email,
-          cargo,
-          nivel_acesso,
-          permissoes,
-          empresa_uid,
-          contato,
-          status,
-          ultimo_acesso,
-          created_at,
-          foto,
-          notification_token,
-          notification_status,
-          notification_updated_at
-        `)
-        .eq('uid', uid)
+        .select('*')
+        .eq('uid', userUid)
         .single();
 
       if (error) {
@@ -137,15 +79,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (userData) {
-        // Atualiza o AuthStore com os dados mais recentes
-        authStore.setUser(userData);
+        authStore.login(userData);
         localStorage.setItem('gbp_user', JSON.stringify(userData));
 
-        // Se houver empresa_uid, carrega os dados da empresa
         if (userData.empresa_uid) {
           const companyData = await loadCompanyData(userData.empresa_uid);
           if (companyData) {
-            setCompanyUser({
+            companyStore.setUser({
               ...userData,
               foto: userData.foto
             });
@@ -160,129 +100,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signIn = async (email: string, password: string) => {
+    try {
+      setIsLoading(true);
+      const userData = await authService.login(email, password);
+      
+      if (userData) {
+        authStore.login(userData);
+        localStorage.setItem('gbp_user', JSON.stringify(userData));
+        localStorage.setItem('user_uid', userData.uid);
+
+        if (userData.empresa_uid) {
+          const companyData = await loadCompanyData(userData.empresa_uid);
+          if (companyData) {
+            companyStore.setUser({
+              ...userData,
+              foto: userData.foto
+            });
+          }
+        }
+
+        navigate('/');
+      }
+    } catch (error) {
+      console.error('Erro no login:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const signOut = () => {
+    authStore.logout();
+    companyStore.clearCompany();
+    navigate('/login');
+  };
+
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        
-        if (user) {
-          const { data: companyData } = await supabaseClient
-            .from('gbp_empresas')
-            .select('status, data_expiracao')
-            .eq('uid', localStorage.getItem('empresa_uid'))
-            .single();
+        const storedUserData = localStorage.getItem('gbp_user');
+        const userUid = localStorage.getItem('user_uid');
+        const empresaUid = localStorage.getItem('empresa_uid');
 
-          if (companyData) {
-            // Verifica status da empresa
-            if (companyData.status === 'cancelled') {
-              authStore.logout();
-              navigate('/login');
-              return;
-            }
+        if (storedUserData && userUid) {
+          const userData = JSON.parse(storedUserData);
+          authStore.login(userData);
 
-            // Verifica trial expirado
-            if (companyData.status === 'trial' && companyData.data_expiracao) {
-              const now = new Date();
-              const expirationDate = new Date(companyData.data_expiracao);
-              if (expirationDate < now) {
-                authStore.logout();
-                navigate('/login');
-                return;
-              }
-            }
+          if (empresaUid) {
+            await loadCompanyData(empresaUid);
           }
-
-          const success = await loadUserData(user.id);
-          if (!success) {
-            authStore.logout();
-          }
+          await loadUserData(userUid);
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
-        authStore.logout();
+        console.error('Erro ao inicializar autenticação:', error);
+        signOut();
       } finally {
-        setIsInitializing(false);
+        setIsLoading(false);
       }
     };
 
     initializeAuth();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    try {
-      const user = await authService.login(email, password);
-      
-      if (user) {
-        // Verifica dados da empresa após login bem-sucedido
-        if (user.empresa_uid) {
-          const { data: companyData, error: companyError } = await supabaseClient
-            .from('gbp_empresas')
-            .select('*')
-            .eq('uid', user.empresa_uid)
-            .single();
-
-          if (companyError) {
-            authStore.logout();
-            throw new Error('Erro ao carregar dados da empresa');
-          }
-
-          if (!companyData) {
-            authStore.logout();
-            throw new Error('Empresa não encontrada');
-          }
-
-          // Verifica status da empresa
-          if (companyData.status === 'cancelled') {
-            authStore.logout();
-            throw new Error('Empresa bloqueada. Entre em contato pelo WhatsApp para reativar sua conta.');
-          }
-
-          // Verifica trial expirado
-          if (companyData.status === 'trial' && companyData.data_expiracao) {
-            const now = new Date();
-            const expirationDate = new Date(companyData.data_expiracao);
-            
-            if (expirationDate < now) {
-              authStore.logout();
-              throw new Error('Período de teste expirado. Entre em contato pelo WhatsApp para ativar sua conta.');
-            }
-          }
-
-          setCompany(companyData);
-        }
-
-        const success = await loadUserData(user.uid);
-        if (success) {
-          navigate('/app');
-        } else {
-          throw new Error('Erro ao carregar dados do usuário');
-        }
-      }
-    } catch (error: any) {
-      console.error('Erro no login:', error);
-      toast({
-        title: "Erro no login",
-        description: error.message || 'Ocorreu um erro ao tentar fazer login',
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  const signOut = () => {
-    authStore.logout();
-    setCompany(null);
-    setCompanyUser(null);
-    localStorage.removeItem('gbp_user');
-    localStorage.removeItem('empresa_uid');
-    localStorage.removeItem('user_uid');
-    localStorage.removeItem('supabase.auth.token');
-    navigate('/login');
-  };
-
-  useCompanyStatusCheck();
-
-  if (isInitializing) {
+  if (isLoading) {
     return <LoadingSpinner />;
   }
 
@@ -290,7 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         isAuthenticated: authStore.isAuthenticated,
-        isLoading: false,
+        isLoading,
         user: authStore.user,
         signIn,
         signOut,
@@ -299,12 +180,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
   }
   return context;
-};
+}

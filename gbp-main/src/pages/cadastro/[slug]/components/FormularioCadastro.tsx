@@ -7,7 +7,7 @@ import {
   FormHelperText as MuiFormHelperText,
 } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import { createClient } from '@supabase/supabase-js';
+import supabaseClient from '../../../../lib/supabase';
 
 // Inicializa o cliente Supabase
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -16,8 +16,6 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 if (!supabaseUrl || !supabaseKey) {
   throw new Error('As variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY são obrigatórias');
 }
-
-const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
 interface Field {
   id: string;

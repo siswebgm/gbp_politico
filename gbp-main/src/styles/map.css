@@ -1,0 +1,121 @@
+/* Estilos para os clusters do mapa */
+.marker-cluster-small {
+  background-color: rgba(241, 128, 23, 0.6);
+}
+.marker-cluster-small div {
+  background-color: rgba(240, 194, 12, 0.6);
+}
+
+.marker-cluster-medium {
+  background-color: rgba(241, 128, 23, 0.6);
+}
+.marker-cluster-medium div {
+  background-color: rgba(240, 194, 12, 0.6);
+}
+
+.marker-cluster-large {
+  background-color: rgba(241, 128, 23, 0.6);
+}
+.marker-cluster-large div {
+  background-color: rgba(240, 194, 12, 0.6);
+}
+
+.marker-cluster {
+  background-clip: padding-box;
+  border-radius: 20px;
+}
+
+.marker-cluster div {
+  width: 30px;
+  height: 30px;
+  margin-left: 5px;
+  margin-top: 5px;
+  text-align: center;
+  border-radius: 15px;
+  font-size: 12px;
+  color: #000;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.marker-cluster span {
+  line-height: 30px;
+}
+
+/* Estilos para os popups */
+.leaflet-popup-content {
+  min-width: 200px;
+}
+
+.leaflet-popup-content h3 {
+  margin-bottom: 8px;
+  color: #1a1a1a;
+}
+
+.leaflet-popup-content p {
+  margin: 4px 0;
+  color: #666;
+}
+
+/* Estilos para os controles do mapa */
+.leaflet-control-layers {
+  border: none !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.leaflet-control-layers-toggle {
+  width: 36px !important;
+  height: 36px !important;
+  background-size: 20px 20px !important;
+}
+
+.leaflet-control-layers-expanded {
+  padding: 8px !important;
+  background: white !important;
+  border-radius: 8px !important;
+}
+
+/* Estilos para o loading */
+.map-loading {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 1000;
+  background: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsividade */
+@media (max-width: 640px) {
+  .leaflet-popup-content {
+    min-width: 150px;
+  }
+  
+  .map-loading {
+    bottom: 10px;
+    left: 10px;
+    padding: 6px 12px;
+  }
+}

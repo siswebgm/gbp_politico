@@ -1,19 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { CircularProgress } from '@mui/material';
-import { createClient } from '@supabase/supabase-js';
+import supabaseClient from '../../../lib/supabase';
 import FormularioCadastro from './components/FormularioCadastro';
 import Custom404 from '@/pages/404';
 
-// Inicializa o cliente Supabase
+// Inicializa as variáveis de ambiente Supabase
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   throw new Error('As variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY são obrigatórias');
 }
-
-const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
 interface Field {
   id: string;

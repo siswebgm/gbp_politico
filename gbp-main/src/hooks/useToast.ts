@@ -16,7 +16,7 @@ interface ToastStore {
   hideToast: (id: string) => void;
 }
 
-export const useToast = create<ToastStore>((set) => ({
+const toastStore = create<ToastStore>((set) => ({
   messages: [],
   showToast: (message: ToastMessage) => {
     const id = Math.random().toString(36).substring(7);
@@ -37,3 +37,15 @@ export const useToast = create<ToastStore>((set) => ({
       messages: state.messages.filter((message) => message.id !== id),
     })),
 }));
+
+export function useToast() {
+  const { showToast } = toastStore();
+
+  return {
+    success: (message: string) => showToast({ title: message, type: 'success' }),
+    error: (message: string) => showToast({ title: message, type: 'error' }),
+    info: (message: string) => showToast({ title: message, type: 'info' }),
+    warning: (message: string) => showToast({ title: message, type: 'warning' }),
+    custom: showToast,
+  };
+}

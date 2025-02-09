@@ -5,6 +5,19 @@ import { useToast } from "../components/ui/use-toast";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../providers/AuthProvider';
 
+const formatDateToDB = (dateStr: string): string => {
+  // Verifica se a data está no formato DD/MM/YYYY
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    const [day, month, year] = parts;
+    // Garante que o ano tenha 4 dígitos
+    const fullYear = year.length === 2 ? `19${year}` : year;
+    // Retorna no formato YYYY-MM-DD
+    return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  return dateStr;
+};
+
 interface CPFAPIResponse {
   CPF: string;
   NOME: string;
@@ -162,7 +175,7 @@ export function useCPF() {
 
       return {
         nome: data.NOME || '',
-        data_nascimento: data.NASC ? data.NASC.split('/').reverse().join('-') : undefined,
+        data_nascimento: data.NASC ? data.NASC.split(' ')[0] : undefined,
         genero: generoCompleto || undefined,
         titulo: data.TITULO_ELEITOR || undefined,
         nome_mae: data.NOME_MAE || undefined,

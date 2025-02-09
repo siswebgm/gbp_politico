@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Mail, Lock } from 'lucide-react';
 import { useAuth } from '../../providers/AuthProvider';
 import { CreateCompanyModal } from './components/CreateCompanyModal';
+import { ErrorModal } from './components/ErrorModal';
+import { TestExpiredModal } from './components/TestExpiredModal';
 import { toast } from '../../components/ui/use-toast';
 
 export function Login() {
@@ -12,6 +14,8 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+  const [isTestExpiredModalOpen, setIsTestExpiredModalOpen] = useState(false);
 
   const onSubmit = async (data: { email: string; password: string }) => {
     try {
@@ -19,9 +23,9 @@ export function Login() {
 
       if (!data.email || !data.password) {
         toast({
-          variant: "error",
+          variant: "destructive",
           title: "Campos obrigatórios",
-          description: "Por favor, preencha todos os campos"
+          description: "Por favor, preencha o email e a senha"
         });
         return;
       }
@@ -30,59 +34,29 @@ export function Login() {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(data.email)) {
         toast({
-          variant: "error",
+          variant: "destructive",
           title: "Email inválido",
           description: "Por favor, insira um email válido"
         });
         return;
       }
 
-      // Validação básica de senha
-      if (data.password.length < 6) {
-        toast({
-          variant: "error",
-          title: "Senha muito curta",
-          description: "A senha deve ter pelo menos 6 caracteres"
-        });
-        return;
-      }
-
       try {
         await signIn(data.email, data.password);
-        toast({
-          variant: "success",
-          title: "Login realizado com sucesso!",
-          description: "Redirecionando para o sistema..."
-        });
         navigate('/app', { replace: true });
       } catch (error) {
-        // Exibe mensagem de erro específica
         if (error instanceof Error) {
-          if (error.message.includes('incorretos')) {
-            toast({
-              variant: "error",
-              title: "Credenciais inválidas",
-              description: "Email ou senha incorretos. Por favor, verifique suas credenciais."
-            });
-          } else if (error.message.includes('inativo')) {
-            toast({
-              variant: "error",
-              title: "Usuário inativo",
-              description: "Usuário inativo. Entre em contato com o administrador."
-            });
+          if (error.message.includes('bloqueada')) {
+            setIsErrorModalOpen(true);
+          } else if (error.message.includes('expirado')) {
+            setIsTestExpiredModalOpen(true);
           } else {
             toast({
-              variant: "error",
-              title: "Erro no login",
-              description: error.message
+              variant: "destructive",
+              title: "Email ou senha incorretos",
+              description: "Verifique suas credenciais e tente novamente"
             });
           }
-        } else {
-          toast({
-            variant: "error",
-            title: "Erro no login",
-            description: "Erro ao fazer login. Por favor, tente novamente."
-          });
         }
       }
     } finally {
@@ -278,13 +252,10 @@ export function Login() {
         onClose={() => setIsModalOpen(false)}
         onSuccess={() => {
           setIsModalOpen(false);
-          toast({
-            variant: "success",
-            title: "Empresa criada com sucesso!",
-            description: "Faça login para continuar."
-          });
         }}
       />
+      <ErrorModal isOpen={isErrorModalOpen} onClose={() => setIsErrorModalOpen(false)} />
+      <TestExpiredModal isOpen={isTestExpiredModalOpen} onClose={() => setIsTestExpiredModalOpen(false)} />
     </div>
   );
 }
