@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { WhatsappLogo } from 'phosphor-react';
+import { User } from 'lucide-react';
 
 export function LandingPage() {
   const features = [
@@ -124,6 +125,7 @@ export function LandingPage() {
 
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [whatsAppNumber, setWhatsAppNumber] = useState("");
+  const [name, setName] = useState("");
 
   const formatWhatsApp = (value: string) => {
     // Remove tudo que não for número
@@ -159,7 +161,8 @@ export function LandingPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          whatsapp: cleanNumber
+          whatsapp: cleanNumber,
+          name: name
         })
       });
 
@@ -167,9 +170,9 @@ export function LandingPage() {
       window.location.href = `https://wa.me/55${cleanNumber}?text=Olá! Gostaria de agendar uma demonstração do GBP Político.`;
       setIsWhatsAppModalOpen(false);
       setWhatsAppNumber("");
+      setName("");
     } catch (error) {
       console.error('Erro ao enviar número:', error);
-      // Você pode adicionar um toast ou notificação de erro aqui se desejar
     }
   };
 
@@ -623,11 +626,25 @@ export function LandingPage() {
               Agende uma Demonstração
             </DialogTitle>
             <DialogDescription className="text-center text-gray-600">
-              Digite seu número de WhatsApp para entrarmos em contato e apresentar todas as funcionalidades do sistema.
+              Digite seus dados para entrarmos em contato e apresentar todas as funcionalidades do sistema.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="p-6">
+          <div className="p-6 space-y-4">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <User className="h-5 w-5 text-gray-500" />
+              </div>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Digite seu nome"
+                className="pl-10 w-full h-12 text-lg border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <WhatsappLogo className="h-5 w-5 text-green-500" weight="fill" />
@@ -647,7 +664,7 @@ export function LandingPage() {
               <Button 
                 onClick={handleWhatsAppSubmit}
                 className="w-full h-12 text-lg font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
-                disabled={whatsAppNumber.replace(/\D/g, '').length < 11}
+                disabled={whatsAppNumber.replace(/\D/g, '').length < 11 || !name.trim()}
               >
                 <WhatsappLogo className="h-5 w-5" weight="fill" />
                 Solicitar Demonstração
