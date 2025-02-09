@@ -305,12 +305,6 @@ export function DisparoMidia() {
     try {
       setSending(true);
 
-      // Converter IDs das categorias para nomes
-      const categoriasNomes = selectedCategories.map(catId => {
-        const categoria = categories?.find(c => c.uid === catId);
-        return categoria?.nome || '';
-      }).filter(nome => nome !== '');
-
       // Preparar dados do disparo
       const disparo = {
         empresa_uid: company?.uid,
@@ -318,7 +312,7 @@ export function DisparoMidia() {
         usuario_nome: user?.nome,
         mensagem: message,
         upload: [],  // Será preenchido após upload
-        categoria: categoriasNomes,
+        categoria: selectedCategories[0] === 'all' ? [] : selectedCategories,
         cidade: selectedCities[0] === 'all' ? [] : selectedCities,
         bairro: selectedNeighborhoods[0] === 'all' ? [] : selectedNeighborhoods,
         genero: selectedGender === 'all' ? null : selectedGender,
