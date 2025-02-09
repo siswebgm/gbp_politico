@@ -147,7 +147,8 @@ export function Eleitores() {
   const isAdmin = user?.cargo === CargoEnum.ADMIN;
   const canExport = isAdmin && user?.nivel_acesso !== 'comum';
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [filters, setFilters] = useState<EleitorFilters>({
+  // Estado inicial dos filtros
+  const initialFilters: EleitorFilters = {
     nome: '',
     genero: '',
     zona: '',
@@ -159,7 +160,42 @@ export function Eleitores() {
     cep: '',
     responsavel: '',
     cidade: ''
-  });
+  };
+
+  const [filters, setFilters] = useState<EleitorFilters>(initialFilters);
+  
+  const handleFilterChange = useCallback((newFilters: Partial<EleitorFilters>) => {
+    setFilters(prev => {
+      const updated = { ...prev, ...newFilters };
+      // Se todos os filtros estiverem vazios, retorna o estado inicial
+      const isEmpty = Object.entries(updated).every(([key, value]) => 
+        value === '' || value === undefined || value === null
+      );
+      return isEmpty ? initialFilters : updated;
+    });
+    setCurrentPage(1);
+  }, []);
+
+  const handleClearAllFilters = useCallback(() => {
+    setFilters(initialFilters);
+    setCurrentPage(1);
+  }, []);
+
+  const handleClearFilter = useCallback((key: keyof EleitorFilters) => {
+    setFilters(prev => {
+      const updated = {
+        ...prev,
+        [key]: key === 'categoria_uid' ? undefined : ''
+      };
+      // Se todos os filtros estiverem vazios, retorna o estado inicial
+      const isEmpty = Object.entries(updated).every(([key, value]) => 
+        value === '' || value === undefined || value === null
+      );
+      return isEmpty ? initialFilters : updated;
+    });
+    setCurrentPage(1);
+  }, []);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [isExportarModalOpen, setIsExportarModalOpen] = useState(false);
@@ -211,40 +247,6 @@ export function Eleitores() {
   // Handlers
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-  }, []);
-
-  const handleFilterChange = useCallback((newFilters: Partial<EleitorFilters>) => {
-    setFilters(prev => ({
-      ...prev,
-      ...newFilters
-    }));
-    setCurrentPage(1); // Reseta para a primeira página ao filtrar
-  }, []);
-
-  const handleClearAllFilters = useCallback(() => {
-    const emptyFilters: EleitorFilters = {
-      nome: '',
-      genero: '',
-      zona: '',
-      secao: '',
-      bairro: '',
-      categoria_uid: undefined,
-      logradouro: '',
-      indicado: '',
-      cep: '',
-      responsavel: '',
-      cidade: ''
-    };
-    setFilters(emptyFilters);
-    setCurrentPage(1);
-  }, []);
-
-  const handleClearFilter = useCallback((key: keyof EleitorFilters) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: key === 'categoria_uid' ? undefined : ''
-    }));
-    setCurrentPage(1);
   }, []);
 
   const handleSelectAllPages = useCallback(() => {

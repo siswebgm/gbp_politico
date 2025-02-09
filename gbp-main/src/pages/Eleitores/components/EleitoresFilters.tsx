@@ -17,11 +17,7 @@ export function EleitoresFilters({
 
   // Sincroniza o valor local com os filtros externos
   useEffect(() => {
-    if (!filters.nome && searchValue) {
-      setSearchValue('');
-    } else if (filters.nome && filters.nome !== searchValue) {
-      setSearchValue(filters.nome);
-    }
+    setSearchValue(filters.nome || '');
   }, [filters.nome]);
 
   // Atualiza os filtros quando o valor do debounce mudar
@@ -29,16 +25,23 @@ export function EleitoresFilters({
     if (debouncedSearch !== filters.nome) {
       onFilterChange({ ...filters, nome: debouncedSearch });
     }
-  }, [debouncedSearch]);
+  }, [debouncedSearch, filters, onFilterChange]);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchValue(e.target.value);
+    const value = e.target.value;
+    setSearchValue(value);
   }, []);
 
   const handleClear = useCallback(() => {
     setSearchValue('');
     onFilterChange({ ...filters, nome: '' });
   }, [filters, onFilterChange]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      handleClear();
+    }
+  }, [handleClear]);
 
   return (
     <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
@@ -49,6 +52,7 @@ export function EleitoresFilters({
             placeholder="Buscar por nome, CPF ou WhatsApp..."
             value={searchValue}
             onChange={handleChange}
+            onKeyDown={handleKeyDown}
             className="w-full h-10 pl-10 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           />
           <div className="absolute inset-y-0 left-3 flex items-center">
