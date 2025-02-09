@@ -27,6 +27,7 @@ export function Login() {
           title: "Campos obrigatórios",
           description: "Por favor, preencha o email e a senha"
         });
+        setIsLoading(false);
         return;
       }
 
@@ -38,11 +39,15 @@ export function Login() {
           title: "Email inválido",
           description: "Por favor, insira um email válido"
         });
+        setIsLoading(false);
         return;
       }
 
       try {
         await signIn(data.email, data.password);
+        // Só limpa os campos se o login for bem sucedido
+        setEmail('');
+        setPassword('');
         navigate('/app', { replace: true });
         // Força um refresh da página após o redirecionamento
         window.location.reload();
@@ -60,8 +65,15 @@ export function Login() {
             });
           }
         }
+        setIsLoading(false);
       }
-    } finally {
+    } catch (error) {
+      console.error('Erro inesperado:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro inesperado",
+        description: "Ocorreu um erro ao tentar fazer login. Por favor, tente novamente."
+      });
       setIsLoading(false);
     }
   };
