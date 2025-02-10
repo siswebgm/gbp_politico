@@ -329,8 +329,8 @@ export function DisparoMidia() {
       if (mediaFiles.length > 0) {
         const uploadPromises = mediaFiles.map(async (file) => {
           try {
-            const url = await uploadFile(file.file);
-            return url;
+            // A URL já vem formatada corretamente do uploadFile
+            return await uploadFile(file.file);
           } catch (error) {
             console.error('Erro ao fazer upload do arquivo:', error);
             throw new Error(`Erro ao fazer upload do arquivo ${file.file.name}`);
@@ -338,7 +338,7 @@ export function DisparoMidia() {
         });
 
         const uploadedUrls = await Promise.all(uploadPromises);
-        disparo.upload = uploadedUrls;
+        disparo.upload = uploadedUrls; // URLs já vêm formatadas corretamente
       }
 
       // Enviar para o backend
