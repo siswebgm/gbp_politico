@@ -16,10 +16,31 @@ interface SendMessageParams {
 }
 
 export const disparoService = {
+  // Função auxiliar para formatar URLs
+  formatMediaUrl(url: string): string {
+    // Exemplo de URL: https://studio.gbppolitico.com/storage/v1/object/jmapps/1739146756682_1000_f_480130983_55yqviszojrllzwsy8islda8ripvhocj_jpg
+    const parts = url.split('/');
+    const fileName = parts[parts.length - 1];
+    
+    // Extrai a extensão (últimos 3-4 caracteres após o último underscore)
+    const extensionMatch = fileName.match(/_([^_]+)$/);
+    if (!extensionMatch) return url;
+
+    const extension = extensionMatch[1];
+    const nameWithoutExtension = fileName.substring(0, fileName.lastIndexOf('_' + extension));
+
+    // Reconstrói a URL com o ponto antes da extensão
+    parts[parts.length - 1] = `${nameWithoutExtension}.${extension}`;
+    return parts.join('/');
+  },
+
   async sendMessage({ message, mediaUrls, filters, companyId, userId }: SendMessageParams) {
     if (!companyId || !userId) {
       throw new Error('Empresa ou usuário não identificados');
     }
+
+    // Formata as URLs das mídias
+    const formattedMediaUrls = mediaUrls.map(url => this.formatMediaUrl(url));
 
     // Construir query base
     let query = supabaseClient
@@ -59,7 +80,7 @@ export const disparoService = {
       .insert([
         {
           mensagem: message,
-          midias: mediaUrls,
+          midias: formattedMediaUrls, // Usa as URLs formatadas
           filtros: filters,
           empresa_uid: companyId,
           usuario_uid: userId,
